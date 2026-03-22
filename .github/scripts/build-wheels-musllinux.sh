@@ -11,7 +11,7 @@ set -euxo pipefail
 apk update
 
 # Install nsjail build dependencies
-apk add protobuf-dev libnl3-dev protobuf-compiler
+apk add protobuf-dev libnl3-dev protoc
 
 # Build Python wheel
 cd /ws

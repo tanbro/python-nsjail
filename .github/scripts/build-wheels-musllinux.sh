@@ -12,7 +12,7 @@ set -euxo pipefail
 apk update
 
 # Install nsjail build dependencies
-apk add protobuf-dev libnl3-dev protoc
+apk add protobuf-dev libnl3-dev protoc flex bison pkgconf
 
 # Build Python wheel using uv (pre-installed in musllinux images)
 cd /ws

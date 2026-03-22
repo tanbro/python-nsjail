@@ -55,6 +55,13 @@ jobs:
 
       - name: Build wheels
         run: |
+          # Select the appropriate build script based on image type
+          if [[ "${{ matrix.image }}" == musllinux_* ]]; then
+            BUILD_SCRIPT=build-wheels-musllinux.sh
+          else
+            BUILD_SCRIPT=build-wheels-manylinux.sh
+          fi
+
           # Detect platform
           if [[ "${{ matrix.image }}" == *_aarch64 ]]; then
             PLATFORM=linux/arm64
@@ -67,7 +74,7 @@ jobs:
             -w /ws \
             --platform $PLATFORM \
             quay.io/pypa/${{ matrix.image }} \
-            sh .github/scripts/build-wheel.sh
+            sh .github/scripts/$BUILD_SCRIPT
 
       - name: Upload wheels
         uses: actions/upload-artifact@v4

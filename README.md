@@ -123,6 +123,7 @@ This creates self-contained wheels with `musllinux` tags that work across differ
 - **OS**: Linux only
 - **Python**: 3.9+ (for installation; not required at runtime)
 - **Permissions**: Using nsjail requires CAP_SYS_ADMIN or root
+- **Kernel**: Linux 5.10+ (some nsjail features require newer kernel syscalls)
 
 ## License
 

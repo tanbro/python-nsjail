@@ -14,12 +14,9 @@ apk update
 # Install nsjail build dependencies
 apk add protobuf-dev libnl3-dev protoc
 
-# Install Python build tools
-python3 -m pip install --disable-pip-version-check build
-
-# Build Python wheel
+# Build Python wheel using uv (pre-installed in musllinux images)
 cd /ws
-python3 -m build --wheel
+uv build --wheel
 
 # Run auditwheel repair to vendor .so files and fix musllinux tags
 auditwheel repair dist/*.whl

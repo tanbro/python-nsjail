@@ -11,12 +11,9 @@ set -euxo pipefail
 # Install nsjail build dependencies
 yum install -y protobuf-devel libnl3-devel protobuf-compiler
 
-# Install Python build tools
-python3 -m pip install --disable-pip-version-check build
-
-# Build Python wheel
+# Build Python wheel using uv (pre-installed in manylinux images)
 cd /ws
-python3 -m build --wheel
+uv build --wheel
 
 # Run auditwheel repair to vendor .so files and fix manylinux tags
 auditwheel repair dist/*.whl

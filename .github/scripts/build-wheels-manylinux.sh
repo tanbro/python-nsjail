@@ -2,13 +2,17 @@
 # Build script for manylinux containers (glibc-based, RHEL/AlmaLinux)
 # This script runs inside manylinux Docker images to:
 # 1. Install nsjail build dependencies
-# 2. Build the Python wheel (setup.py compiles nsjail automatically)
-# 3. Run auditwheel repair to vendor .so files and fix manylinux tags
+# 2. Install Python build tools
+# 3. Build the Python wheel (setup.py compiles nsjail automatically)
+# 4. Run auditwheel repair to vendor .so files and fix manylinux tags
 
 set -euxo pipefail
 
 # Install nsjail build dependencies
 yum install -y protobuf-devel libnl3-devel protobuf-compiler
+
+# Install Python build tools
+python3 -m pip install --disable-pip-version-check build
 
 # Build Python wheel
 cd /ws

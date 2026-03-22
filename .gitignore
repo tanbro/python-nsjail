@@ -469,7 +469,7 @@ CLAUDE.md
 wheelhouse/
 
 # Built nsjail binary (copied by custom build command)
-src/nsjail/bin/
+src/nsjail/nsjail
 
 # Generated version file (setuptools_scm)
-src/nsjail/_version.py
+src/nsjail/version.py

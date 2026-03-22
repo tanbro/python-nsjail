@@ -24,12 +24,13 @@ nsjail-status = "nsjail.status:main"
 
 [tool.setuptools]
 include-package-data = true
+zip-safe = false
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
-nsjail = ["bin/*"]
+nsjail = ["nsjail"]
 
 [tool.setuptools_scm]
 # setuptools_scm will extract version from git tags

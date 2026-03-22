@@ -63,9 +63,9 @@ class BuildCommand(_build):
         if not src_binary.exists():
             raise RuntimeError(f"nsjail build failed: {src_binary} not found")
 
-        bin_dir = project_root / "src" / "nsjail" / "bin"
-        bin_dir.mkdir(exist_ok=True)
-        dest_binary = bin_dir / "nsjail"
+        pkg_dir = project_root / "src" / "nsjail"
+        pkg_dir.mkdir(exist_ok=True)
+        dest_binary = pkg_dir / "nsjail"
         shutil.copy(src_binary, dest_binary)
         dest_binary.chmod(0o755)
         print(f"Copied nsjail binary to {dest_binary}")

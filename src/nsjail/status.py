@@ -31,8 +31,8 @@ def get_status() -> dict[str, Path]:
     if installed.exists():
         result["package"] = installed
 
-    # local development (src/nsjail/bin/nsjail)
-    dev_binary = Path(__file__).parent / "bin" / "nsjail"
+    # local development (src/nsjail/nsjail)
+    dev_binary = Path(__file__).parent / "nsjail"
     if dev_binary.exists():
         result["dev"] = dev_binary
 

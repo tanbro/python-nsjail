@@ -10,7 +10,7 @@ def main()->None:
     """
     # Find the nsjail binary relative to this module
     here = Path(__file__).parent.resolve()
-    nsjail_bin = here / "bin" / "nsjail"
+    nsjail_bin = here / "nsjail"
 
     if not nsjail_bin.exists():
         print(f"Error: nsjail binary not found at {nsjail_bin}", file=sys.stderr)

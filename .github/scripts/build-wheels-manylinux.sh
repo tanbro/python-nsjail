@@ -8,8 +8,8 @@
 
 set -euxo pipefail
 
-# Install nsjail build dependencies
-yum install -y protobuf-devel libnl3-devel protobuf-compiler flex bison pkg-config
+# Install nsjail build dependencies (per nsjail/README.md)
+yum install -y autoconf bison flex libtool libnl3-devel pkgconfig protobuf-compiler protobuf-devel
 
 # Build Python wheel using uv (pre-installed in manylinux images)
 cd /ws

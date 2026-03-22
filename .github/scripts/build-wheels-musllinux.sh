@@ -11,8 +11,8 @@ set -euxo pipefail
 # musllinux images are Alpine-based, so we use apk
 apk update
 
-# Install nsjail build dependencies
-apk add protobuf-dev libnl3-dev protoc flex bison pkgconf
+# Install nsjail build dependencies (per nsjail/README.md)
+apk add autoconf bison flex libtool libnl3-dev pkgconf protoc protobuf-dev
 
 # Build Python wheel using uv (pre-installed in musllinux images)
 cd /ws

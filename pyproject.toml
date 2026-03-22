@@ -12,7 +12,6 @@ requires-python = ">=3.9"
 # Only Linux is supported (nsjail is Linux-only)
 classifiers = [
     "Operating System :: POSIX :: Linux",
-    "License :: OSI Approved :: Apache Software License",
 ]
 
 [project.urls]

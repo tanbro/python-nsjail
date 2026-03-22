@@ -80,7 +80,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: wheels-${{ matrix.image }}
-          path: dist/*.whl
+          path: wheelhouse/*.whl
           if-no-files-found: error
 
   publish-pypi:

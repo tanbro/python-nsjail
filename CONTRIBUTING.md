@@ -29,8 +29,8 @@ source .venv/bin/activate
 # Install build tool
 pip install build
 
-# Install with dev dependencies
-pip install -e ".[dev]"
+# Install the package
+pip install -e .
 ```
 
 **IMPORTANT**: Strongly recommend using a virtual environment for development.
@@ -46,7 +46,7 @@ sudo apt-get install autoconf bison flex gcc g++ git libprotobuf-dev libnl-route
 
 See [nsjail README](https://github.com/google/nsjail) for full build requirements.
 
-Install **Python tools** if your are using pip:
+Install **Python build tools** if your are using pip:
 ```bash
 pip install build
 ```
@@ -95,7 +95,7 @@ pytest -v
    git describe --tags --abbrev=0
    ```
 
-3. Update `src/nsjail/__init__.py`:
+3. Update `src/nsjail/version.py`:
    ```python
    __version__ = "1.0.0"           # Bump if needed
    __nsjail_version__ = "3.6"      # New nsjail version

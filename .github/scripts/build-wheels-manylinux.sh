@@ -12,7 +12,7 @@ yum install -y protobuf-devel libnl3-devel protobuf-compiler
 
 # Build Python wheel
 cd /ws
-python -m build --wheel
+python3 -m build --wheel
 
 # Run auditwheel repair to vendor .so files and fix manylinux tags
 auditwheel repair dist/*.whl

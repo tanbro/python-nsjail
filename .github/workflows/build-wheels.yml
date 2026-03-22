@@ -1,0 +1,105 @@
+name: Build Wheels
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/build-wheels.yml
+      - setup.py
+      - src
+      - nsjail/**
+
+permissions:
+  contents: read
+  id-token: write  # For PyPI trusted publishing
+
+jobs:
+  validate-tag:
+    name: Validate Tag
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+    outputs:
+      version: ${{ steps.check.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate version
+        id: check
+        run: |
+          python3 -m pip install --disable-pip-version-check packaging
+          python3 .github/scripts/validate_version.py
+
+  build-wheels:
+    name: Build wheel (${{ matrix.image }})
+    runs-on: ubuntu-latest
+    needs: validate-tag
+    if: needs.validate-tag.outputs.version != '' || github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request'
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - manylinux_2_28_x86_64
+          - manylinux_2_28_aarch64
+          - musllinux_1_2_x86_64
+          - musllinux_1_2_aarch64
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Build wheels
+        run: |
+          # Select the appropriate build script based on image type
+          if [[ "${{ matrix.image }}" == musllinux_* ]]; then
+            BUILD_SCRIPT=build-wheels-musllinux.sh
+          else
+            BUILD_SCRIPT=build-wheels-manylinux.sh
+          fi
+
+          # Detect platform
+          if [[ "${{ matrix.image }}" == *_aarch64 ]]; then
+            PLATFORM=linux/arm64
+          else
+            PLATFORM=linux/amd64
+          fi
+
+          docker run --rm \
+            -v $(pwd):/ws \
+            -w /ws \
+            --platform $PLATFORM \
+            quay.io/pypa/${{ matrix.image }} \
+            /ws/.github/scripts/$BUILD_SCRIPT
+
+      - name: Upload wheels
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-${{ matrix.image }}
+          path: dist/*.whl
+          if-no-files-found: error
+
+  publish-pypi:
+    name: Publish to PyPI
+    runs-on: ubuntu-latest
+    needs: [validate-tag, build-wheels]
+    if: needs.validate-tag.outputs.version != ''
+    environment:
+      name: pypi
+      url: https://pypi.org/p/nsjail
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: wheels-*
+          path: dist/
+          merge-multiple: true
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          skip-existing: true
+          verbose: true

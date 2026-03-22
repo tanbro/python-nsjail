@@ -467,3 +467,6 @@ CMakeUserPresets.json
 CLAUDE.md
 *.lock
 wheelhouse/
+
+# Built nsjail binary (copied by custom build command)
+src/nsjail/bin/

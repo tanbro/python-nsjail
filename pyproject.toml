@@ -20,19 +20,24 @@ Homepage = "https://github.com/google/nsjail"
 Repository = "https://github.com/tanbro/python-nsjail"
 
 [project.scripts]
-nsjail-status = "nsjail:main"
+nsjail = "nsjail.__main__:main"
+nsjail-status = "nsjail.status:main"
 
 [tool.setuptools]
-zip-safe = false
+include-package-data = true
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+nsjail = ["bin/*"]
 
 [tool.setuptools.dynamic]
 version = { attr = "nsjail.__version__" }
 
 [dependency-groups]
 dev = [
+    "setuptools>=80.0",
     "pytest>=8.0",
     "mypy",
 ]

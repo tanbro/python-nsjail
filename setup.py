@@ -1,5 +1,6 @@
 """Setup configuration for setuptools."""
 
+import os
 import platform
 import re
 import shutil
@@ -58,7 +59,15 @@ class BuildCommand(_build):
             )
 
         print(f"Building nsjail in {nsjail_dir}...")
-        subprocess.run(["make"], cwd=nsjail_dir, check=True)
+        # Force baseline x86-64 for manylinux_2_34 compatibility
+        # (GCC in manylinux_2_34 defaults to x86-64-v2 which auditwheel rejects)
+        # Only apply to x86_64; aarch64 doesn't have this issue
+        env = {}
+        machine = platform.machine().lower()
+        if machine in ("x86_64", "amd64"):
+            env = {"CFLAGS": "-march=x86-64", "CXXFLAGS": "-march=x86-64"}
+            print("Setting CFLAGS/CXXFLAGS for baseline x86-64")
+        subprocess.run(["make"], cwd=nsjail_dir, check=True, env={**os.environ, **env})
 
         if not src_binary.exists():
             raise RuntimeError(f"nsjail build failed: {src_binary} not found")
@@ -89,10 +98,6 @@ class BdistWheelCommand(bdist_wheel):
 
     def write_wheelfile(self, wheelfile_base: str, generator: str | None = None):
         """Write WHEEL file with py3-none tag."""
-        # nsjail is Linux-only
-        if (plat_name := platform.system().lower()) != "linux":
-            raise RuntimeError(f"nsjail is Linux-only, building on {platform.system()}")
-
         if generator:
             super().write_wheelfile(wheelfile_base, generator)
         else:
@@ -103,8 +108,9 @@ class BdistWheelCommand(bdist_wheel):
             wheel_path = wheel_path / "WHEEL"
         if wheel_path.exists() and wheel_path.is_file():
             content = wheel_path.read_text()
+            # Replace cp311-cp311-linux_x86_64 with py3-none-linux_x86_64
             content = re.sub(
-                rf"Tag: cp[0-9]+-cp[0-9]+-({plat_name}_[a-z0-9_]+)",
+                r"Tag: cp[0-9]+-cp[0-9]+-(linux_[a-z0-9_]+)",
                 r"Tag: py3-none-\1",
                 content,
             )

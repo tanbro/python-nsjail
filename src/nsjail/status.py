@@ -7,7 +7,8 @@ import shutil
 import sysconfig
 from pathlib import Path
 
-from .version import __nsjail_version__,__version__
+from ._nsjail_version import __nsjail_version__
+from .version import __version__
 
 __all__ = ["get_status"]
 

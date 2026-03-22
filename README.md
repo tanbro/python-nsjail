@@ -1,17 +1,12 @@
 # python-nsjail
 
-> nsjail binary distribution — Prebuilt static nsjail executables packaged as Python Wheels
+> Prebuilt [nsjail](https://github.com/google/nsjail) executables packaged as Python wheels
 
 ## Overview
 
-`python-nsjail` is not a Python library. It's a **binary distribution tool** that packages prebuilt static [nsjail](https://github.com/google/nsjail) executables as Python Wheels for easy installation via `pip`.
+`python-nsjail` distributes the nsjail binary as a Python package for easy installation via `pip`.
 
-### Design Goals
-
-- **Zero dependencies**: Contains no Python runtime code, only distributes binaries
-- **Statically linked**: nsjail binaries are independent of glibc/libc, run on any Linux distro
-- **Multi-architecture**: Supports x86_64, aarch64, and more
-- **Auto-selection**: pip automatically selects the matching architecture
+**Note**: This is not a Python library — it only provides the nsjail binary executable.
 
 ## Installation
 
@@ -19,71 +14,117 @@
 pip install nsjail
 ```
 
-After installation, the nsjail binary is placed at:
+The `nsjail` binary is installed to your environment's `bin/` directory (e.g., `~/.local/bin/nsjail` or `venv/bin/nsjail`).
 
-```
-/opt/nsjail/bin/nsjail
+### Virtual Environment (Recommended)
+
+Using a virtual environment keeps nsjail isolated:
+
+```bash
+# Create venv
+python -m venv .venv
+source .venv/bin/activate
+
+# Install nsjail
+pip install nsjail
+
+# Verify
+nsjail-status
 ```
 
 ## Usage
 
-### Direct invocation
+### Command line
+
+```bash
+nsjail --help
+```
+
+### Check installation status
+
+```bash
+nsjail-status
+```
+
+Output:
+```
+nsjail status:
+  System:   (not found)
+  Package:  /venv/bin/nsjail ✓
+  Dev:      (not found)
+
+Package version: 1.0.0
+Bundled nsjail:  3.6
+```
+
+### Python API
 
 ```python
-import subprocess
-import shutil
+import nsjail
 
-nsjail_path = shutil.which("nsjail")  # /opt/nsjail/bin/nsjail
-subprocess.run([nsjail_path, "--help"])
+# Get status of all nsjail binaries
+info = nsjail.status()
+# Returns: {'system': Path | None, 'package': Path | None, 'dev': Path | None}
 ```
 
-### As a dependency
+## Versions
 
-Other Python projects can depend on this package to get the nsjail binary:
+This package tracks two separate versions:
 
-```toml
-# pyproject.toml
-[project]
-dependencies = ["nsjail>=0.1.0"]
-```
-
-```python
-import shutil
-
-nsjail_path = shutil.which("nsjail")
-if not nsjail_path:
-    raise RuntimeError("nsjail not found")
-
-# Use nsjail...
-```
-
-## Distribution
-
-Each architecture gets its own wheel:
-
-```
-nsjail-0.1.0-py3-none-linux_x86_64.whl   # ~1.5 MB
-nsjail-0.1.0-py3-none-linux_aarch64.whl  # ~1.4 MB
-```
-
-pip automatically selects the wheel matching your architecture.
-
-## System Requirements
-
-- **OS**: Linux (kernel 3.10+)
-- **Python**: 3.10+ (only for installation; no Python code is executed)
-- **Permissions**: Using nsjail requires CAP_SYS_ADMIN or root
+- **Package version** (`nsjail.__version__`): The Python package version (follows semver)
+- **Bundled nsjail** (`nsjail.__nsjail_version__`): The nsjail binary version (from upstream)
 
 ## Building
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for building multi-architecture wheels.
+### Prerequisites
+
+```bash
+# Build dependencies
+apt-get install -y build-essential libprotobuf-dev libnl-route-3-dev
+
+# Python tools
+pip install build
+```
+
+### Build steps
+
+```bash
+# 1. Initialize git submodule
+git submodule update --init --recursive
+
+# 2. Build nsjail binary
+cd nsjail && make && cd ..
+
+# 3. Build wheel
+python -m build --wheel
+```
+
+The wheel is created in `dist/`.
+
+### Auditwheel (for distribution)
+
+For PyPI distribution, use `auditwheel` to bundle library dependencies:
+
+```bash
+# Install auditwheel
+pip install auditwheel
+
+# Repair wheel (bundles shared libraries)
+auditwheel repair dist/nsjail-*.whl
+
+# Repaired wheels are in wheelhouse/
+ls wheelhouse/
+```
+
+This creates self-contained wheels with `musllinux` tags that work across different Linux distributions.
+
+## System Requirements
+
+- **OS**: Linux only
+- **Python**: 3.9+ (for installation; not required at runtime)
+- **Permissions**: Using nsjail requires CAP_SYS_ADMIN or root
 
 ## License
 
-- **nsjail**: Apache 2.0 (see [nsjail/LICENSE](https://github.com/google/nsjail))
-- **packaging**: MIT
-
-## Related Projects
-
-- [google/nsjail](https://github.com/google/nsjail) - Upstream nsjail project
-- [jailer](https://github.com/yourorg/jailer) - Python sandbox wrapper built on nsjail
+- **nsjail**: Apache-2.0 (see [google/nsjail](https://github.com/google/nsjail))
+- **python-nsjail packaging**: Apache-2.0

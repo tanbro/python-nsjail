@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=80.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nsjail"
+dynamic = ["version"]
+description = "Prebuilt nsjail executables for Linux"
+readme = "README.md"
+license = { text = "Apache-2.0" }
+requires-python = ">=3.9"
+# Only Linux is supported (nsjail is Linux-only)
+classifiers = [
+    "Operating System :: POSIX :: Linux",
+    "License :: OSI Approved :: Apache Software License",
+]
+
+[project.urls]
+Homepage = "https://github.com/google/nsjail"
+Repository = "https://github.com/tanbro/python-nsjail"
+
+[project.scripts]
+nsjail-status = "nsjail:main"
+
+[tool.setuptools]
+zip-safe = false
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.dynamic]
+version = { attr = "nsjail.__version__" }
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "mypy",
+]

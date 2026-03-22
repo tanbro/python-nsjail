@@ -1,0 +1,20 @@
+exclude .*
+exclude CLAUDE.md
+exclude CODE_OF_CONDUCT.md
+exclude CONTRIBUTING.md
+exclude coverage.*
+exclude pytest.ini
+exclude README.*.md
+exclude *.lock
+
+prune .*
+prune docs
+prune htmlcov
+prune tests
+prune wheelhouse
+
+graft nsjail
+global-exclude .git
+global-exclude .git/*
+global-exclude *.o
+prune nsjail/.git

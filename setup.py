@@ -1,6 +1,5 @@
 """Setup configuration for setuptools."""
 
-import os
 import platform
 import re
 import shutil
@@ -59,15 +58,7 @@ class BuildCommand(_build):
             )
 
         print(f"Building nsjail in {nsjail_dir}...")
-        # Force baseline x86-64 for manylinux_2_34 compatibility
-        # (GCC in manylinux_2_34 defaults to x86-64-v2 which auditwheel rejects)
-        # Only apply to x86_64; aarch64 doesn't have this issue
-        env = {}
-        machine = platform.machine().lower()
-        if machine in ("x86_64", "amd64"):
-            env = {"CFLAGS": "-march=x86-64", "CXXFLAGS": "-march=x86-64"}
-            print("Setting CFLAGS/CXXFLAGS for baseline x86-64")
-        subprocess.run(["make"], cwd=nsjail_dir, check=True, env={**os.environ, **env})
+        subprocess.run(["make"], cwd=nsjail_dir, check=True)
 
         if not src_binary.exists():
             raise RuntimeError(f"nsjail build failed: {src_binary} not found")

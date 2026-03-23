@@ -11,6 +11,16 @@ set -euxo pipefail
 # Install nsjail build dependencies (per nsjail/README.md)
 yum install -y autoconf bison flex libtool libnl3-devel pkgconfig protobuf-compiler protobuf-devel
 
+# Force baseline x86-64 for manylinux_2_34 compatibility
+# (GCC in manylinux_2_34 defaults to x86-64-v2 which auditwheel rejects)
+# Only apply to x86_64; aarch64 doesn't have this issue
+export ARCH=$(uname -m)
+if [ "$ARCH" = "x86_64" ]; then
+    export CFLAGS="-march=x86-64"
+    export CXXFLAGS="-march=x86-64"
+    echo "Setting CFLAGS/CXXFLAGS for baseline x86-64 (manylinux)"
+fi
+
 # Build Python wheel using uv (pre-installed in manylinux images)
 cd /ws
 uv build --wheel

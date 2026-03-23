@@ -11,10 +11,10 @@
 ## Installation
 
 ```bash
-pip install nsjail
+pip install python-nsjail
 ```
 
-This creates an `nsjail` command in your environment's `bin/` directory (e.g., `~/.local/bin/nsjail` or `venv/bin/nsjail`).
+This creates an `nsjail` command in your environment's `bin/` directory (e.g., `~/.local/bin/nsjail` or `/some/where/.venv/bin/nsjail`).
 
 **How it works**: The `nsjail` command is a small Python wrapper that executes the actual nsjail binary bundled inside the package. The wrapper uses `os.execl()` to replace itself with the real binary, preserving the process ID.
 
@@ -27,8 +27,8 @@ Using a virtual environment keeps nsjail isolated:
 python -m venv .venv
 source .venv/bin/activate
 
-# Install nsjail
-pip install nsjail
+# Install python-nsjail
+pip install python-nsjail
 
 # Verify
 nsjail-status

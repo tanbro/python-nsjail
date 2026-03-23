@@ -3,7 +3,7 @@ requires = ["setuptools>=80.0", "setuptools-scm>=8"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "nsjail"
+name = "python-nsjail"
 dynamic = ["version"]
 description = "Prebuilt nsjail executables for Linux"
 readme = "README.md"

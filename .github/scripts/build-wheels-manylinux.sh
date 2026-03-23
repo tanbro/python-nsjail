@@ -10,21 +10,19 @@ set -euxo pipefail
 # Install nsjail build dependencies (per nsjail/README.md)
 yum install -y autoconf bison flex libtool libnl3-devel pkgconfig protobuf-compiler protobuf-devel
 
+# Force baseline x86-64 for manylinux_2_34 compatibility
+# (GCC in manylinux_2_34 defaults to x86-64-v2 which auditwheel rejects)
+export ARCH=$(uname -m)
+if [ "$ARCH" = "x86_64" ]; then
+    export CFLAGS="-march=x86-64"
+    export CXXFLAGS="-march=x86-64"
+    echo "Setting CFLAGS/CXXFLAGS for baseline x86-64 (manylinux)"
+fi
+
 # Python versions to build (available in PATH as python3.X)
 PYTHON_VERSIONS="3.9 3.10 3.11 3.12 3.13 3.14"
 
-# Build nsjail binary once (shared across all Python versions)
-echo "Building nsjail binary..."
-if [ "$ARCH" = "x86_64" ]; then
-    # Force baseline x86-64 for manylinux_2_34 compatibility
-    # (GCC in manylinux_2_34 defaults to x86-64-v2 which auditwheel rejects)
-    echo "Setting CFLAGS/CXXFLAGS for baseline x86-64 (manylinux)"
-    make -C /ws/nsjail CFLAGS="$CFLAGS" CXXFLAGS="$CXXFLAGS"
-else
-    make -C /ws/nsjail
-fi
-
-# Build wheel for each Python version
+# Build wheels - setuptools will compile nsjail via BuildExtCommand
 cd /ws
 for py_ver in $PYTHON_VERSIONS; do
     echo "Building wheel with python$py_ver..."

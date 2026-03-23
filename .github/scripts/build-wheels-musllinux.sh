@@ -16,11 +16,7 @@ apk add autoconf bison flex libtool libnl3-dev pkgconf protoc protobuf-dev
 # Python versions to build (available in PATH as python3.X)
 PYTHON_VERSIONS="3.9 3.10 3.11 3.12 3.13 3.14"
 
-# Build nsjail binary once (shared across all Python versions)
-echo "Building nsjail binary..."
-make -C /ws/nsjail
-
-# Build wheel for each Python version
+# Build wheels - setuptools will compile nsjail via BuildExtCommand
 cd /ws
 for py_ver in $PYTHON_VERSIONS; do
     echo "Building wheel with python$py_ver..."

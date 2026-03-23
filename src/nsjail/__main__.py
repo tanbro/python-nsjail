@@ -2,7 +2,8 @@ import os
 import sys
 from pathlib import Path
 
-def main()->None:
+
+def main() -> None:
     """Entry point for nsjail command.
 
     This function uses os.execl() to replace the current Python process
@@ -25,7 +26,6 @@ def main()->None:
     except OSError as e:
         print(f"Error executing nsjail: {e}", file=sys.stderr)
         sys.exit(-2)
-
 
 
 if __name__ == "__main__":

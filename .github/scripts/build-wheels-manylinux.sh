@@ -24,19 +24,17 @@ PYTHON_VERSIONS="3.9 3.10 3.11 3.12 3.13 3.14"
 
 # Build wheels - setuptools will compile nsjail via BuildExtCommand
 cd /ws
-# Clean any previous builds to ensure fresh compilation with correct flags
-make -C /ws/nsjail clean
+
+# For x86_64, build nsjail directly with make to ensure CFLAGS are applied
+# (setup.py subprocess might not inherit env vars correctly)
+if [ "$ARCH" = "x86_64" ]; then
+    echo "Building nsjail with baseline x86-64 flags..."
+    make -C /ws/nsjail clean
+    make -C /ws/nsjail CFLAGS="$CFLAGS" CXXFLAGS="$CXXFLAGS"
+fi
 for py_ver in $PYTHON_VERSIONS; do
     echo "Building wheel with python$py_ver..."
-    if [ "$ARCH" = "x86_64" ]; then
-        # Use --no-isolation to preserve CFLAGS/CXXFLAGS for nsjail compilation
-        # (isolated environment strips environment variables)
-        python$py_ver -m pip install --disable-pip-version-check setuptools>=80.0 build setuptools-scm>=8
-        python$py_ver -m build --wheel --no-isolation
-    else
-        # aarch64 doesn't need special flags, can use isolated build
-        python$py_ver -m build --wheel
-    fi
+    python$py_ver -m build --wheel
 done
 
 # Run auditwheel repair on all wheels

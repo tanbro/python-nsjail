@@ -24,12 +24,6 @@ class BuildExtCommand(_build_ext):
 
     def build_extension(self, ext):
         """Build nsjail binary and stub extension."""
-        # Create stub C file if it doesn't exist
-        stub_c = Path("src/nsjail/_stub.c")
-        if not stub_c.exists():
-            stub_c.parent.mkdir(parents=True, exist_ok=True)
-            stub_c.write_text("typedef int x;\n")
-
         # Compile the stub extension (creates .so file)
         super().build_extension(ext)
 

@@ -473,3 +473,6 @@ src/nsjail/nsjail
 
 # Generated version file (setuptools_scm)
 src/nsjail/version.py
+
+# Stub extension .so files
+src/nsjail/_ext*.so

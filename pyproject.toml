@@ -20,7 +20,7 @@ Repository = "https://github.com/tanbro/python-nsjail"
 
 [project.scripts]
 nsjail = "nsjail.__main__:main"
-nsjail-status = "nsjail.status:main"
+nsjail-find = "nsjail.find:main"
 
 [tool.setuptools]
 include-package-data = true

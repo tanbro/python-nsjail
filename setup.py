@@ -1,120 +1,75 @@
 """Setup configuration for setuptools."""
 
-import platform
-import re
 import shutil
 import subprocess
 from pathlib import Path
 
 from setuptools import Extension, setup
-from setuptools.command.bdist_wheel import bdist_wheel
-from setuptools.command.build import build as _build
 from setuptools.command.build_ext import build_ext as _build_ext
 
 
 class NsjailExtension(Extension):
-    """Fake extension to trick setuptools into using platlib layout."""
+    """Extension that builds nsjail binary (not a real C extension)."""
 
     def __init__(self):
-        # This extension is never actually built
-        super().__init__("nsjail._fake_ext", sources=[])
+        # Empty C source to satisfy setuptools extension build
+        super().__init__(
+            "nsjail._ext",
+            sources=["src/nsjail/_stub.c"],
+        )
 
 
 class BuildExtCommand(_build_ext):
-    """Custom build_ext that does nothing (our extension is fake)."""
-
-    def run(self):
-        """Skip the entire build_ext process for our fake extension."""
-        # Don't call super().run() - this skips all extension building
-        # This is needed for editable installs to work
-        pass
+    """Custom build_ext that compiles nsjail binary."""
 
     def build_extension(self, ext):
-        """Skip building the fake extension."""
-        pass
+        """Build nsjail binary and stub extension."""
+        # Create stub C file if it doesn't exist
+        stub_c = Path("src/nsjail/_stub.c")
+        if not stub_c.exists():
+            stub_c.parent.mkdir(parents=True, exist_ok=True)
+            stub_c.write_text("typedef int x;\n")
 
-    def get_outputs(self):
-        """Return empty list since we don't build any actual extensions."""
-        return []
+        # Compile the stub extension (creates .so file)
+        super().build_extension(ext)
 
-    def get_source_files(self):
-        """Return empty list since we don't have any source files."""
-        return []
-
-
-class BuildCommand(_build):
-    """Custom build command that compiles nsjail binary."""
-
-    def run(self):
-        """Compile nsjail and copy to src/nsjail/bin/ before building."""
-        project_root = Path(__file__).parent.resolve()
+        # Now compile and copy nsjail binary
+        project_root = Path(__file__).parent
         nsjail_dir = project_root / "nsjail"
         src_binary = nsjail_dir / "nsjail"
 
         if not nsjail_dir.exists():
             raise RuntimeError(
-                f"nsjail submodule not found at {nsjail_dir}. "
+                "nsjail submodule not found. "
                 "Initialize with: git submodule update --init --recursive"
             )
 
-        print(f"Building nsjail in {nsjail_dir}...")
-        subprocess.run(["make"], cwd=nsjail_dir, check=True)
+        # Skip compilation if binary already exists
+        if not src_binary.exists():
+            print(f"Building nsjail in {nsjail_dir}...")
+            subprocess.check_call(["make"], cwd=nsjail_dir)
 
         if not src_binary.exists():
             raise RuntimeError(f"nsjail build failed: {src_binary} not found")
 
-        pkg_dir = project_root / "src" / "nsjail"
-        pkg_dir.mkdir(exist_ok=True)
-        dest_binary = pkg_dir / "nsjail"
+        # Copy nsjail binary alongside the .so file
+        dest_dir = Path(self.get_ext_fullpath(ext.name)).parent
+        dest_binary = dest_dir / "nsjail"
         shutil.copy(src_binary, dest_binary)
         dest_binary.chmod(0o755)
         print(f"Copied nsjail binary to {dest_binary}")
 
-        super().run()
-
-
-class BdistWheelCommand(bdist_wheel):
-    """Custom bdist_wheel to set py3-none tag."""
-
-    def finalize_options(self):
-        super().finalize_options()
-
-        # nsjail is Linux-only
-        if platform.system().lower() != "linux":
-            raise RuntimeError(f"nsjail is Linux-only, building on {platform.system()}")
-
-        # Use generic linux platform tag, auditwheel will fix it to manylinux/musllinux
-        self.plat_name = f"linux_{platform.machine().lower()}"
-        print(f"Platform: {self.plat_name}")
-
-    def write_wheelfile(self, wheelfile_base: str, generator: str | None = None):
-        """Write WHEEL file with py3-none tag."""
-        if generator:
-            super().write_wheelfile(wheelfile_base, generator)
-        else:
-            super().write_wheelfile(wheelfile_base)
-
-        wheel_path = Path(wheelfile_base)
-        if wheel_path.is_dir():
-            wheel_path = wheel_path / "WHEEL"
-        if wheel_path.exists() and wheel_path.is_file():
-            content = wheel_path.read_text()
-            # Replace cp311-cp311-linux_x86_64 with py3-none-linux_x86_64
-            content = re.sub(
-                r"Tag: cp[0-9]+-cp[0-9]+-(linux_[a-z0-9_]+)",
-                r"Tag: py3-none-\1",
-                content,
-            )
-            wheel_path.write_text(content)
-            print("Modified WHEEL file to use py3-none tag")
+        # Also copy to src/nsjail/ for editable installs
+        src_pkg_dir = project_root / "src" / "nsjail"
+        src_pkg_dir.mkdir(parents=True, exist_ok=True)
+        src_binary = src_pkg_dir / "nsjail"
+        shutil.copy(nsjail_dir / "nsjail", src_binary)
+        src_binary.chmod(0o755)
+        print(f"Also copied to {src_binary} for editable installs")
 
 
 if __name__ == "__main__":
     setup(
         ext_modules=[NsjailExtension()],
-        cmdclass={
-            "build": BuildCommand,
-            "build_ext": BuildExtCommand,
-            "bdist_wheel": BdistWheelCommand,
-        },
+        cmdclass={"build_ext": BuildExtCommand},
     )

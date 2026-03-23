@@ -4,9 +4,12 @@
 
 ## Overview
 
-`python-nsjail` distributes the nsjail binary as a Python package for easy installation via `pip`.
+`python-nsjail` provides prebuilt nsjail binaries as Python wheels, plus a **Python API** for programmatic sandboxing.
 
-**Note**: This is not a Python library — it only provides the nsjail binary executable.
+**Features**:
+- Prebuilt nsjail binary for Linux (x86_64, aarch64)
+- Async Python API for process isolation
+- Chroot, user/group, resource limits, mount controls
 
 ## Installation
 
@@ -36,13 +39,43 @@ nsjail-status
 
 ## Usage
 
+### Python API
+
+```python
+import asyncio
+from nsjail import start, NsjailOptions
+
+async def main():
+    # Basic usage
+    proc = await start(
+        command="/bin/echo",
+        args=["hello"],
+        options=NsjailOptions(chroot="/"),
+    )
+    await proc.wait()
+
+    # Stream output
+    proc = await start(
+        command="/bin/cat",
+        args=["/etc/hostname"],
+        options=NsjailOptions(
+            chroot="/",
+            user="nobody",
+            mounts=[("/etc/hostname", "/etc/hostname", "ro")],
+        ),
+    )
+    async for source, chunk in proc.stream():
+        if source == "stdout":
+            print(chunk.decode())
+
+asyncio.run(main())
+```
+
 ### Command line
 
 ```bash
 nsjail --help
 ```
-
-### Check nsjail path
 
 ```bash
 nsjail-find

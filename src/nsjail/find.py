@@ -49,6 +49,5 @@ def main() -> None:
     print(f"Bundled nsjail:  {__nsjail_version__}")
 
 
-
 if __name__ == "__main__":
     main()

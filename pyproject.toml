@@ -1,21 +1,33 @@
 [build-system]
-requires = ["setuptools>=80.0", "setuptools-scm>=8"]
 build-backend = "setuptools.build_meta"
+requires = ["setuptools>=80.0", "setuptools-scm>=8"]
 
 [project]
 name = "python-nsjail"
 dynamic = ["version"]
-description = "Prebuilt nsjail executables for Linux"
+description = "Prebuilt nsjail executables for Python developers"
 readme = "README.md"
+authors = [{ name = "tanbro", email = "tanbro@163.com" }]
 license = "Apache-2.0"
 requires-python = ">=3.9"
-# Only Linux is supported (nsjail is Linux-only)
+
+keywords = [
+  "sandbox",
+  "nsjail",
+  "linux",
+  "security",
+  "process-isolation",
+  "chroot",
+  "linux-namespaces",
+  "seccomp-bpf-policies",
+]
+
 classifiers = [
-    "Operating System :: POSIX :: Linux",
+  "Operating System :: POSIX :: Linux",
 ]
 
 [project.urls]
-Homepage = "https://github.com/google/nsjail"
+Homepage = "https://github.com/tanbro/python-nsjail"
 Repository = "https://github.com/tanbro/python-nsjail"
 
 [project.scripts]
@@ -33,13 +45,11 @@ where = ["src"]
 nsjail = ["nsjail"]
 
 [tool.setuptools_scm]
-# setuptools_scm will extract version from git tags
-# Recommended tag format: v1.0.0, v1.0.1, etc.
 version_file = "src/nsjail/version.py"
 
 [dependency-groups]
 dev = [
-    "setuptools>=80.0",
-    "pytest>=8.0",
-    "mypy",
+  "setuptools>=80.0",
+  "pytest>=8.0",
+  "mypy",
 ]

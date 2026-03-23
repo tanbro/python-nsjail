@@ -453,12 +453,12 @@ CMakeUserPresets.json
 
 
 .vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
-!.vscode/*.code-snippets
-!*.code-workspace
+# !.vscode/settings.json
+# !.vscode/tasks.json
+# !.vscode/launch.json
+# !.vscode/extensions.json
+# !.vscode/*.code-snippets
+# !*.code-workspace
 
 # Built Visual Studio Code Extensions
 *.vsix
@@ -473,6 +473,3 @@ src/nsjail/nsjail
 
 # Generated version file (setuptools_scm)
 src/nsjail/version.py
-
-# Stub extension .so files
-src/nsjail/_ext*.so

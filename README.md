@@ -74,56 +74,16 @@ This package tracks two separate versions:
 - **Package version** (`nsjail.__version__`): The Python package version (follows semver)
 - **Bundled nsjail** (`nsjail.__nsjail_version__`): The nsjail binary version (from upstream)
 
-## Building
+## Building from Source
 
-### Prerequisites
-
-```bash
-# Build dependencies
-apt-get install -y build-essential libprotobuf-dev libnl-route-3-dev
-
-# Python tools
-pip install build
-```
-
-### Build steps
-
-```bash
-# 1. Initialize git submodule
-git submodule update --init --recursive
-
-# 2. Build nsjail binary
-cd nsjail && make && cd ..
-
-# 3. Build wheel
-python -m build --wheel
-```
-
-The wheel is created in `dist/`.
-
-### Auditwheel (for distribution)
-
-For PyPI distribution, use `auditwheel` to bundle library dependencies:
-
-```bash
-# Install auditwheel
-pip install auditwheel
-
-# Repair wheel (bundles shared libraries)
-auditwheel repair dist/nsjail-*.whl
-
-# Repaired wheels are in wheelhouse/
-ls wheelhouse/
-```
-
-This creates self-contained wheels with `musllinux` tags that work across different Linux distributions.
+For development or building from source, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## System Requirements
 
-- **OS**: Linux only
-- **Python**: 3.9+ (for installation; not required at runtime)
+- **OS**: **Linux only**
+- **Kernel**: **Linux 5.10+** (some nsjail features require newer kernel syscalls)
 - **Permissions**: Using nsjail requires CAP_SYS_ADMIN or root
-- **Kernel**: Linux 5.10+ (some nsjail features require newer kernel syscalls)
+- **Python**: Python 3.9+
 
 ### Platform Compatibility
 

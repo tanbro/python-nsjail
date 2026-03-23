@@ -25,12 +25,11 @@ PYTHON_VERSIONS="3.9 3.10 3.11 3.12 3.13 3.14"
 # Build wheels - setuptools will compile nsjail via BuildExtCommand
 cd /ws
 
-# For x86_64, build nsjail directly with make to ensure CFLAGS are applied
-# (setup.py subprocess might not inherit env vars correctly)
+# For x86_64, patch nsjail Makefile to use baseline x86-64 flags
+# (kafel sub-make overrides CFLAGS, so we need to patch it)
 if [ "$ARCH" = "x86_64" ]; then
-    echo "Building nsjail with baseline x86-64 flags..."
-    make -C /ws/nsjail clean
-    make -C /ws/nsjail CFLAGS="$CFLAGS" CXXFLAGS="$CXXFLAGS"
+    echo "Patching nsjail Makefile for baseline x86-64..."
+    patch -p1 < .github/patches/nsjail-baseline-x86-64.patch
 fi
 for py_ver in $PYTHON_VERSIONS; do
     echo "Building wheel with python$py_ver..."

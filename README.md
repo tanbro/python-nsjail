@@ -14,7 +14,9 @@
 pip install nsjail
 ```
 
-The `nsjail` binary is installed to your environment's `bin/` directory (e.g., `~/.local/bin/nsjail` or `venv/bin/nsjail`).
+This creates an `nsjail` command in your environment's `bin/` directory (e.g., `~/.local/bin/nsjail` or `venv/bin/nsjail`).
+
+**How it works**: The `nsjail` command is a small Python wrapper that executes the actual nsjail binary bundled inside the package. The wrapper uses `os.execl()` to replace itself with the real binary, preserving the process ID.
 
 ### Virtual Environment (Recommended)
 
@@ -40,39 +42,21 @@ nsjail-status
 nsjail --help
 ```
 
-### Check installation status
+### Check nsjail path
 
 ```bash
-nsjail-status
+nsjail-find
 ```
 
 Output:
 ```
 nsjail status:
-  System:   (not found)
-  Package:  /venv/bin/nsjail ✓
-  Dev:      (not found)
+  System PATH:   /root/workspaces/python-nsjail/.venv/bin/nsjail
+  Bundled:       /root/workspaces/python-nsjail/src/nsjail/nsjail
 
-Package version: 1.0.0
+Package version: 0.1.0b3.dev1+g71c0da62d.d20260323
 Bundled nsjail:  3.6
 ```
-
-### Python API
-
-```python
-import nsjail
-
-# Get status of all nsjail binaries
-info = nsjail.status()
-# Returns: {'system': Path | None, 'package': Path | None, 'dev': Path | None}
-```
-
-## Versions
-
-This package tracks two separate versions:
-
-- **Package version** (`nsjail.__version__`): The Python package version (follows semver)
-- **Bundled nsjail** (`nsjail.__nsjail_version__`): The nsjail binary version (from upstream)
 
 ## Building from Source
 

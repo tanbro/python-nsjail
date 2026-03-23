@@ -16,7 +16,8 @@ export ARCH=$(uname -m)
 if [ "$ARCH" = "x86_64" ]; then
     export CFLAGS="-march=x86-64"
     export CXXFLAGS="-march=x86-64"
-    echo "Setting CFLAGS/CXXFLAGS for baseline x86-64 (manylinux)"
+    export LDFLAGS="-march=x86-64"
+    echo "Setting CFLAGS/CXXFLAGS/LDFLAGS for baseline x86-64 (manylinux)"
 fi
 
 # Python versions to build (available in PATH as python3.X)

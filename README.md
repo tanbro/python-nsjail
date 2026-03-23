@@ -125,6 +125,19 @@ This creates self-contained wheels with `musllinux` tags that work across differ
 - **Permissions**: Using nsjail requires CAP_SYS_ADMIN or root
 - **Kernel**: Linux 5.10+ (some nsjail features require newer kernel syscalls)
 
+### Platform Compatibility
+
+| Platform | libc | Compatible With | CPU Requirement |
+|----------|------|-----------------|-----------------|
+| manylinux_2_34_x86_64 | glibc 2.34 | Ubuntu 22.04+, Debian 12+, RHEL 9+ | x86-64-v2* (SSE4.2, POPCNT) |
+| manylinux_2_34_aarch64 | glibc 2.34 | ARM64 systems | ARM64 (v8+) |
+| musllinux_1_2_x86_64 | musl 1.2 | Alpine Linux, other musl-based | x86-64-v2* (SSE4.2, POPCNT) |
+| musllinux_1_2_aarch64 | musl 1.2 | Alpine Linux ARM64 | ARM64 (v8+) |
+
+> ⚠️ **`x86-64-v2` Note**: \
+> The x86_64 wheels are built with `manylinux_2_34` containers which use `x86-64-v2` by default. This requires a CPU from ~2010 or later (supports SSE4.2 and POPCNT instructions). Most modern systems support this.
+> If you need to run on older x86-64 hardware (pre-2010), please use the source distribution or build from source.
+
 ## License
 
 - **nsjail**: Apache-2.0 (see [google/nsjail](https://github.com/google/nsjail))

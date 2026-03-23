@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 # Build script for musllinux containers (musl-based, Alpine)
 # This script runs inside musllinux Docker images to:
 # 1. Install nsjail build dependencies
@@ -14,7 +14,7 @@ apk update
 apk add autoconf bison flex libtool libnl3-dev pkgconf protoc protobuf-dev
 
 # Python versions to build (available in PATH as python3.X)
-PYTHON_VERSIONS=("3.9" "3.10" "3.11" "3.12" "3.13" "3.14")
+PYTHON_VERSIONS="3.9 3.10 3.11 3.12 3.13 3.14"
 
 # Build nsjail binary once (shared across all Python versions)
 echo "Building nsjail binary..."
@@ -22,7 +22,7 @@ make -C /ws/nsjail
 
 # Build wheel for each Python version
 cd /ws
-for py_ver in "${PYTHON_VERSIONS[@]}"; do
+for py_ver in $PYTHON_VERSIONS; do
     echo "Building wheel with python$py_ver..."
     python$py_ver -m build --wheel
 done

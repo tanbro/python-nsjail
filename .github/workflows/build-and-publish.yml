@@ -76,7 +76,7 @@ jobs:
             -w /ws \
             --platform $PLATFORM \
             quay.io/pypa/${{ matrix.image }} \
-            bash .github/scripts/$BUILD_SCRIPT
+            sh .github/scripts/$BUILD_SCRIPT
 
       - name: Upload wheels
         uses: actions/upload-artifact@v4

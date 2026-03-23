@@ -1,4 +1,4 @@
-name: build and publish wheels
+name: build and publish
 
 on:
   push:
@@ -32,6 +32,28 @@ jobs:
         run: |
           python3 -m pip install --disable-pip-version-check packaging
           python3 .github/scripts/validate_version.py
+
+  build-sdist:
+    name: Build sdist
+    runs-on: ubuntu-latest
+    needs: validate-tag
+    if: needs.validate-tag.outputs.version != '' || github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Build sdist
+        run: |
+          python3 -m pip install --disable-pip-version-check build
+          python3 -m build --sdist
+
+      - name: Upload sdist
+        uses: actions/upload-artifact@v4
+        with:
+          name: sdist
+          path: dist/*.tar.gz
+          if-no-files-found: error
 
   build-wheels:
     name: Build wheel (${{ matrix.image }})
@@ -88,7 +110,7 @@ jobs:
   publish-pypi:
     name: Publish to PyPI
     runs-on: ubuntu-latest
-    needs: [validate-tag, build-wheels]
+    needs: [validate-tag, build-sdist, build-wheels]
     if: needs.validate-tag.outputs.version != ''
     environment:
       name: pypi

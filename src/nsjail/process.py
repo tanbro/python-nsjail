@@ -111,7 +111,7 @@ class NsjailProcess:
 
         Data flow:
         - If not streaming: read and discard (or auto_print)
-        - If streaming: put into queue, blocking when full (backpressure)
+        - If streaming: put into queue, discard oldest when full (ring buffer)
         """
         stream = self._proc.stdout if source == "stdout" else self._proc.stderr
         if stream is None:
@@ -132,9 +132,12 @@ class NsjailProcess:
                 else:
                     print(chunk.decode(), end="")
 
-            # Queue if streaming (blocking put provides backpressure)
+            # Queue if streaming (non-blocking, discard oldest when full)
             if self._streaming:
-                await self._queue.put((source, chunk))
+                # Discard oldest item to make room if full
+                if self._queue.full():
+                    self._queue.get_nowait()
+                self._queue.put_nowait((source, chunk))
 
     async def __aenter__(self) -> Self:
         """Enter context manager."""

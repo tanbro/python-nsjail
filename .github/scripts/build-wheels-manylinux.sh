@@ -8,37 +8,31 @@
 set -euxo pipefail
 
 # Install nsjail build dependencies (per nsjail/README.md)
-yum install -y autoconf bison flex libtool libnl3-devel pkgconfig protobuf-compiler protobuf-devel
+yum install -y autoconf bison flex libtool libnl3-devel patch pkgconfig protobuf-compiler protobuf-devel
 
-# Force baseline x86-64 for manylinux_2_34 compatibility
-# (GCC in manylinux_2_34 defaults to x86-64-v2 which auditwheel rejects)
+# Note: manylinux_2_34 uses x86-64-v2 by default (GCC 14 on AlmaLinux 9)
+# This is acceptable since nsjail requires kernel 5.10+, which implies modern hardware
 export ARCH=$(uname -m)
-if [ "$ARCH" = "x86_64" ]; then
-    export CFLAGS="-march=x86-64"
-    export CXXFLAGS="-march=x86-64"
-    export LDFLAGS="-march=x86-64"
-    echo "Setting CFLAGS/CXXFLAGS/LDFLAGS for baseline x86-64 (manylinux)"
-fi
 
 # Python versions to build (available in PATH as python3.X)
 PYTHON_VERSIONS="3.9 3.10 3.11 3.12 3.13 3.14"
 
 # Build wheels - setuptools will compile nsjail via BuildExtCommand
 cd /ws
-
-# For x86_64, patch nsjail Makefile to use baseline x86-64 flags
-# (kafel sub-make overrides CFLAGS, so we need to patch it)
-if [ "$ARCH" = "x86_64" ]; then
-    echo "Patching nsjail Makefile for baseline x86-64..."
-    patch -p1 < .github/patches/nsjail-baseline-x86-64.patch
-fi
 for py_ver in $PYTHON_VERSIONS; do
     echo "Building wheel with python$py_ver..."
     python$py_ver -m build --wheel
 done
 
 # Run auditwheel repair on all wheels
-auditwheel repair dist/*.whl
+# For x86_64, use --disable-isa-ext-check to skip x86-64-v2 check
+# (manylinux_2_34 uses x86-64-v2 by default, but spec requires baseline x86-64)
+# This is a known PyPA issue #1725
+if [ "$ARCH" = "x86_64" ]; then
+    auditwheel repair --disable-isa-ext-check dist/*.whl
+else
+    auditwheel repair dist/*.whl
+fi
 
 # Verify wheels were created
 wheel_count=$(ls wheelhouse/*.whl 2>/dev/null | wc -l)

@@ -18,8 +18,6 @@ PYTHON_VERSIONS="3.9 3.10 3.11 3.12 3.13 3.14"
 
 # Build wheels - setuptools will compile nsjail via BuildExtCommand
 cd /ws
-# Clean any previous builds to ensure fresh compilation with correct flags
-make -C /ws/nsjail clean
 for py_ver in $PYTHON_VERSIONS; do
     echo "Building wheel with python$py_ver..."
     python$py_ver -m build --wheel

@@ -91,19 +91,19 @@ def test_options_build_args():
         chroot="/srv/jail",
         user=65534,
         env={"HOME": "/tmp"},
-        mounts=[("/lib", "/lib", "ro")],
-        tmpfs=["/tmp"],
+        bindmount_ro=["/lib:/lib"],
+        tmpfsmount=["/tmp"],
     )
     args = options.build_args()
 
     assert "-Mo" in args
-    assert "-c" in args
+    assert "--chroot" in args
     assert "/srv/jail" in args
-    assert "-u" in args
+    assert "--user" in args
     assert "65534" in args
     assert "--env" in args
     assert "HOME=/tmp" in args
-    assert "-R" in args
+    assert "--bindmount_ro" in args
 
 
 def test_options_none_values():
@@ -117,24 +117,50 @@ def test_options_none_values():
 
 def test_options_empty_containers():
     """Test that empty containers don't generate arguments."""
-    options = NsjailOptions(env={}, mounts=[], tmpfs=[])
+    options = NsjailOptions(env={}, bindmount=[], bindmount_ro=[], tmpfsmount=[])
     args = options.build_args()
 
     # Should only have -Mo
     assert args == ["-Mo"]
 
 
-def test_options_mounts():
-    """Test mounts parameter."""
+def test_options_bindmount():
+    """Test bindmount/bindmount_ro parameters."""
     options = NsjailOptions(
-        mounts=[
-            ("/lib", "/lib", "ro"),
-            ("/tmp", "/tmp", "rw"),
-        ]
+        bindmount_ro=["/lib:/lib", "/usr:/usr"],
+        bindmount=["/tmp:/tmp", "/proc"],
     )
     args = options.build_args()
 
-    assert "-R" in args
-    assert "/lib:/lib" in args or "/lib" in args
-    assert "-B" in args
-    assert "/tmp:/tmp" in args or "/tmp" in args
+    # Should have 2x --bindmount_ro and 2x --bindmount
+    assert args.count("--bindmount_ro") == 2
+    assert args.count("--bindmount") == 2
+    assert "/lib:/lib" in args
+    assert "/usr:/usr" in args
+    assert "/tmp:/tmp" in args
+    assert "/proc" in args
+
+
+def test_options_bindmount_only():
+    """Test bindmount with only read-write mounts."""
+    options = NsjailOptions(
+        bindmount=["/lib:/lib", "/tmp:/tmp"],
+    )
+    args = options.build_args()
+
+    # Should have 2x --bindmount and no --bindmount_ro
+    assert args.count("--bindmount") == 2
+    assert "--bindmount_ro" not in args
+
+
+def test_options_tmpfsmount():
+    """Test tmpfsmount parameter."""
+    options = NsjailOptions(
+        tmpfsmount=["/tmp", "/dev/shm"],
+    )
+    args = options.build_args()
+
+    # Should have 2x --tmpfsmount
+    assert args.count("--tmpfsmount") == 2
+    assert "/tmp" in args
+    assert "/dev/shm" in args

@@ -29,6 +29,7 @@ for py_ver in $PYTHON_VERSIONS; do
     if [ "$ARCH" = "x86_64" ]; then
         # Use --no-isolation to preserve CFLAGS/CXXFLAGS for nsjail compilation
         # (isolated environment strips environment variables)
+        python$py_ver -m pip install --disable-pip-version-check setuptools>=80.0 build setuptools-scm>=8
         python$py_ver -m build --wheel --no-isolation
     else
         # aarch64 doesn't need special flags, can use isolated build

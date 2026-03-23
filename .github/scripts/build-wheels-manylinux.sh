@@ -26,7 +26,14 @@ PYTHON_VERSIONS="3.9 3.10 3.11 3.12 3.13 3.14"
 cd /ws
 for py_ver in $PYTHON_VERSIONS; do
     echo "Building wheel with python$py_ver..."
-    python$py_ver -m build --wheel
+    if [ "$ARCH" = "x86_64" ]; then
+        # Use --no-isolation to preserve CFLAGS/CXXFLAGS for nsjail compilation
+        # (isolated environment strips environment variables)
+        python$py_ver -m build --wheel --no-isolation
+    else
+        # aarch64 doesn't need special flags, can use isolated build
+        python$py_ver -m build --wheel
+    fi
 done
 
 # Run auditwheel repair on all wheels

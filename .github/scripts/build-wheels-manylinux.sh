@@ -30,10 +30,7 @@ for py_ver in $PYTHON_VERSIONS; do
 done
 
 # Run auditwheel repair on all wheels
-for wheel in dist/*.whl; do
-    echo "Repairing $wheel..."
-    auditwheel repair "$wheel"
-done
+auditwheel repair dist/*.whl
 
 # Verify wheels were created
 wheel_count=$(ls wheelhouse/*.whl 2>/dev/null | wc -l)

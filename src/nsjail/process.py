@@ -17,7 +17,7 @@ else:
 from .find import find_bundled_nsjail, find_system_nsjail
 from .options import NsjailOptions
 
-__all__ = ["NsjailProcess", "create_nsjail_process"]
+__all__ = ["NsjailProcess", "create_nsjail_process", "StreamSource"]
 
 StreamSource = Literal["stdout", "stderr"]
 

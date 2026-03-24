@@ -63,6 +63,7 @@ class NsjailOptions:
         args: list[str] = []
 
         # Always use ONCE mode (default: 'o' [MODE_STANDALONE_ONCE])
+        args.append("-Mo")
 
         # Filesystem
         if self.chroot is not None:

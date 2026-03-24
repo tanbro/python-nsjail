@@ -8,7 +8,6 @@ import os
 import subprocess
 from pathlib import Path
 
-import pytest
 
 import nsjail
 
@@ -29,30 +28,28 @@ def test_package_version():
     assert nsjail.__nsjail_version__, "nsjail version should not be empty"
 
 
-def test_find_system_nsjail():
-    """Test that find_system_nsjail() returns expected type."""
-    result = nsjail.find_system_nsjail()
-    # Should return str or None
-    assert result is None or isinstance(result, str)
+def test_locate_nsjail():
+    """Test that locate_nsjail() returns a Path."""
+    result = nsjail.locate_nsjail()
+    assert isinstance(result, Path)
 
 
-def test_find_bundled_nsjail():
-    """Test that find_bundled_nsjail() returns expected type."""
-    result = nsjail.find_bundled_nsjail()
-    # Should return Path or None
-    assert result is None or isinstance(result, (str, Path))
+def test_bundled_binary():
+    """Test that bundled_binary() returns a Path."""
+    result = nsjail.bundled_binary()
+    assert isinstance(result, Path)
+
+
+def test_console_script():
+    """Test that console_script() returns expected type."""
+    result = nsjail.console_script()
+    # May not exist in all environments
+    assert result is None or isinstance(result, Path)
 
 
 def test_nsjail_binary_executable():
     """Test that the nsjail binary is executable."""
-    # Try bundled first, then system
-    nsjail_path = nsjail.find_bundled_nsjail()
-    if not nsjail_path:
-        nsjail_path = nsjail.find_system_nsjail()
-
-    if not nsjail_path:
-        pytest.skip("No nsjail binary found")
-
+    nsjail_path = nsjail.bundled_binary()
     assert os.access(nsjail_path, os.X_OK), (
         f"nsjail binary is not executable: {nsjail_path}"
     )
@@ -60,13 +57,7 @@ def test_nsjail_binary_executable():
 
 def test_nsjail_runs():
     """Test that the nsjail binary runs and shows usage."""
-    # Try bundled first, then system
-    nsjail_path = nsjail.find_bundled_nsjail()
-    if not nsjail_path:
-        nsjail_path = nsjail.find_system_nsjail()
-
-    if not nsjail_path:
-        pytest.skip("No nsjail binary found")
+    nsjail_path = nsjail.bundled_binary()
 
     result = subprocess.run(
         [str(nsjail_path)],
@@ -79,13 +70,7 @@ def test_nsjail_runs():
 
 def test_nsjail_help():
     """Test that nsjail --help works."""
-    # Try bundled first, then system
-    nsjail_path = nsjail.find_bundled_nsjail()
-    if not nsjail_path:
-        nsjail_path = nsjail.find_system_nsjail()
-
-    if not nsjail_path:
-        pytest.skip("No nsjail binary found")
+    nsjail_path = nsjail.bundled_binary()
 
     result = subprocess.run(
         [str(nsjail_path), "--help"],

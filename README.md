@@ -78,17 +78,35 @@ nsjail --help
 ```
 
 ```bash
-nsjail-find
+nsjail-status
 ```
 
 Output:
 ```
 nsjail status:
-  System PATH:   /root/workspaces/python-nsjail/.venv/bin/nsjail
-  Bundled:       /root/workspaces/python-nsjail/src/nsjail/nsjail
+  System PATH:   /usr/bin/nsjail
+  Bundled:       /path/to/bundled/nsjail
+  Script:        /path/to/wrapper/nsjail
 
-Package version: 0.1.0b3.dev1+g71c0da62d.d20260323
+Package version: 0.1.0
 Bundled nsjail:  3.6
+```
+
+### Environment Variables
+
+**`NSJAIL`** - Path to nsjail binary (overrides auto-detection)
+
+Supports `~` and `$VAR` expansion:
+
+```bash
+# Use custom nsjail
+export NSJAIL=/opt/nsjail/bin/nsjail
+
+# With ~ expansion
+export NSJAIL=~/local/bin/nsjail
+
+# With environment variable expansion
+export NSJAIL=$XDG_DATA_HOME/nsjail/bin/nsjail
 ```
 
 ## Building from Source

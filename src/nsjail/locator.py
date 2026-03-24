@@ -1,4 +1,4 @@
-"""Utilities for finding nsjail binary."""
+"""Utilities for locating nsjail binary."""
 
 from __future__ import annotations
 
@@ -9,10 +9,7 @@ import warnings
 import importlib.resources as resources
 from pathlib import Path
 
-from ._nsjail_version import __nsjail_version__
-from .version import __version__
-
-__all__ = ["get_nsjail_path", "bundled_binary", "console_script", "which_nsjail"]
+__all__ = ["locate_nsjail", "bundled_binary", "console_script", "which_nsjail"]
 
 
 def which_nsjail() -> str | None:
@@ -51,8 +48,8 @@ def console_script() -> Path | None:
     return None
 
 
-def get_nsjail_path() -> Path:
-    """Get the appropriate nsjail binary to use.
+def locate_nsjail() -> Path:
+    """Locate the appropriate nsjail binary to use.
 
     Priority:
     1. NSJAIL environment variable (supports ~ and $VAR expansion)
@@ -82,22 +79,3 @@ def get_nsjail_path() -> Path:
         return Path(which_)
 
     raise RuntimeError("nsjail binary not found")
-
-
-def main() -> None:
-    """Entry point for nsjail-status command."""
-    which_ = which_nsjail()
-    bundled = bundled_binary()
-    script = console_script()
-
-    print("nsjail status:")
-    print(f"  System PATH:   {which_ if which_ else '(not found)'}")
-    print(f"  Bundled:       {bundled if bundled else '(not found)'}")
-    print(f"  Script:       {script if script else '(not found)'}")
-    print()
-    print(f"Package version: {__version__}")
-    print(f"Bundled nsjail:  {__nsjail_version__}")
-
-
-if __name__ == "__main__":
-    main()

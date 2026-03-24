@@ -43,11 +43,11 @@ nsjail-status
 
 ```python
 import asyncio
-from nsjail import start, NsjailOptions
+from nsjail import NsjailOptions, NsjailProcess, create_nsjail_process
 
 async def main():
     # Basic usage
-    proc = await start(
+    proc = await create_nsjail_process(
         command="/bin/echo",
         args=["hello"],
         options=NsjailOptions(chroot="/"),
@@ -55,7 +55,7 @@ async def main():
     await proc.wait()
 
     # Stream output
-    proc = await start(
+    proc = await create_nsjail_process(
         command="/bin/cat",
         args=["/etc/hostname"],
         options=NsjailOptions(

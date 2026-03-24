@@ -2,13 +2,13 @@
 
 import pytest
 
-from nsjail import NsjailOptions, start
+from nsjail import NsjailOptions, create_nsjail_process
 
 
 @pytest.mark.asyncio
 async def test_start_basic():
     """Test basic start and wait."""
-    proc = await start(
+    proc = await create_nsjail_process(
         command="/bin/echo",
         args=["hello"],
         options=NsjailOptions(chroot="/"),
@@ -21,7 +21,7 @@ async def test_start_basic():
 @pytest.mark.asyncio
 async def test_start_with_options():
     """Test start with NsjailOptions."""
-    proc = await start(
+    proc = await create_nsjail_process(
         command="/bin/true",
         options=NsjailOptions(chroot="/"),
     )
@@ -33,7 +33,7 @@ async def test_start_with_options():
 @pytest.mark.asyncio
 async def test_stream_output():
     """Test streaming stdout with chroot."""
-    proc = await start(
+    proc = await create_nsjail_process(
         command="/bin/echo",
         args=["hello world"],
         options=NsjailOptions(chroot="/"),
@@ -52,8 +52,8 @@ async def test_stream_output():
 
 @pytest.mark.asyncio
 async def test_auto_print():
-    """Test auto_print parameter."""
-    proc = await start(command="/bin/echo", args=["test"], auto_print=True)
+    """Test tee parameter (auto-print output)."""
+    proc = await create_nsjail_process(command="/bin/echo", args=["test"], tee=True)
     await proc.wait()
     # Should have printed, we just check it doesn't crash
 
@@ -61,7 +61,7 @@ async def test_auto_print():
 @pytest.mark.asyncio
 async def test_context_manager():
     """Test async context manager."""
-    async with await start(
+    async with await create_nsjail_process(
         command="/bin/sleep",
         args=["0.1"],
         options=NsjailOptions(chroot="/"),
@@ -74,7 +74,7 @@ async def test_context_manager():
 @pytest.mark.asyncio
 async def test_terminate():
     """Test terminate method."""
-    proc = await start(
+    proc = await create_nsjail_process(
         command="/bin/sleep",
         args=["3600"],
         options=NsjailOptions(chroot="/"),

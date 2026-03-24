@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import asyncio
 import sys
-from typing import AsyncIterator, Literal
-
+import warnings
+from typing import AsyncIterator, Literal, TYPE_CHECKING
+if TYPE_CHECKING:
+    from _typeshed import StrPath
 if sys.version_info >= (3, 11):
     from typing import Self
 else:
@@ -14,7 +16,7 @@ else:
 from .find import find_bundled_nsjail, find_system_nsjail
 from .options import NsjailOptions
 
-__all__ = ["NsjailProcess", "start"]
+__all__ = ["NsjailProcess", "create_nsjail_process"]
 
 StreamSource = Literal["stdout", "stderr"]
 
@@ -24,33 +26,77 @@ class NsjailProcess:
 
     Uses a single asyncio.Queue to preserve output ordering between stdout and stderr.
     Queue is lazily created on first stream() call.
+
+    Note:
+        Do not instantiate this class directly. Use :func:`create_nsjail_process` instead.
     """
+
+    # ===== Special methods =====
 
     def __init__(
         self,
         proc: asyncio.subprocess.Process,
-        auto_print: bool = False,
-        buffer_size: int = 1024,
-        chunk_size: int = 65536,  # 64KB default for fewer syscalls
+        buffer_size: int,
+        chunk_size: int,
+        tee: bool,
     ):
+        """Initialize NsjailProcess.
+
+        Note::
+            Do not call this constructor directly. Use :func:`create_nsjail_process` instead.
+
+        Args:
+            proc: The underlying asyncio subprocess
+            buffer_size: Queue size for stream()
+            chunk_size: Read chunk size in bytes
+            tee: Whether to tee output to console
+        """
         self._proc = proc
-        self._auto_print = auto_print
-        self._buffer_size = buffer_size
         self._chunk_size = chunk_size
+        self._tee = tee
+
+        self._streaming = False
+        self._stderr_eof_received = False
+
+        # Reader tasks (started by factory function)
+        self._read_stdout_task: asyncio.Task[None] | None = None
+        self._read_stderr_task: asyncio.Task[None] | None = None
 
         # Create queue immediately (bounded for backpressure)
         self._queue: asyncio.Queue[tuple[StreamSource, bytes]] = asyncio.Queue(
             maxsize=buffer_size
         )
-        self._streaming = False
-        self._stderr_eof_received = False
 
-        # Reader tasks
-        self._read_stdout_task: asyncio.Task[None] | None = None
-        self._read_stderr_task: asyncio.Task[None] | None = None
+    def __del__(self) -> None:
+        """Warn if process was not properly closed."""
+        if self.is_running():
+            try:
+                warnings.warn(
+                    f"NsjailProcess {self.pid} was not closed. "
+                    "Use 'async with' or 'await proc.aclose()'",
+                    ResourceWarning,
+                    source=self,
+                )
+            except Exception:
+                pass  # __del__ must not raise
+            finally:
+                self.kill()
 
-        # Start readers immediately
-        self._start_internal_read()
+    async def __aenter__(self) -> Self:
+        """Enter context manager."""
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: object,
+    ) -> None:
+        """Exit context manager, calls terminate() + wait()."""
+        _ = exc_type, exc_val, exc_tb  # Unused but required by protocol
+        await self.aclose()
+
+    # ===== Properties =====
 
     @property
     def pid(self) -> int:
@@ -62,9 +108,13 @@ class NsjailProcess:
         """None if running, otherwise exit code."""
         return self._proc.returncode
 
+    # ===== State query =====
+
     def is_running(self) -> bool:
         """Whether the process is still running."""
         return self._proc.returncode is None
+
+    # ===== Process control =====
 
     async def wait(self) -> int:
         """Wait for process to finish, return exit code."""
@@ -77,6 +127,23 @@ class NsjailProcess:
     def kill(self) -> None:
         """Force kill (SIGKILL), non-blocking."""
         self._proc.kill()
+
+    async def aclose(self, timeout: int = 5) -> None:
+        """Explicit close, terminate with timeout fallback to kill.
+
+        Args:
+            timeout: Seconds to wait after terminate before killing.
+        """
+        self.terminate()
+        try:
+            await asyncio.wait_for(self.wait(), timeout=timeout)
+        except asyncio.TimeoutError:
+            self.kill()
+        finally:
+            # Always wait for reader tasks to complete
+            await self._wait_readers()
+
+    # ===== Output handling =====
 
     async def stream(self) -> AsyncIterator[tuple[StreamSource, bytes]]:
         """Stream stdout/stderr with preserved ordering.
@@ -102,7 +169,10 @@ class NsjailProcess:
                 continue
             yield (source, chunk)
 
+    # ===== Private methods =====
+
     def _start_internal_read(self) -> None:
+        """Start stdout/stderr reader tasks."""
         self._read_stdout_task = asyncio.create_task(self._internal_read("stdout"))
         self._read_stderr_task = asyncio.create_task(self._internal_read("stderr"))
 
@@ -110,7 +180,7 @@ class NsjailProcess:
         """Read stdout or stderr stream.
 
         Data flow:
-        - If not streaming: read and discard (or auto_print)
+        - If tee=True: print to console and optionally queue for stream()
         - If streaming: put into queue, discard oldest when full (ring buffer)
         """
         stream = self._proc.stdout if source == "stdout" else self._proc.stderr
@@ -125,8 +195,8 @@ class NsjailProcess:
                     await self._queue.put((source, b""))
                 break
 
-            # Optional print
-            if self._auto_print:
+            # Tee to console
+            if self._tee:
                 if source == "stderr":
                     print(chunk.decode(), end="", file=sys.stderr)
                 else:
@@ -138,29 +208,6 @@ class NsjailProcess:
                 if self._queue.full():
                     self._queue.get_nowait()
                 self._queue.put_nowait((source, chunk))
-
-    async def __aenter__(self) -> Self:
-        """Enter context manager."""
-        return self
-
-    async def __aexit__(self, *args: object) -> None:
-        """Exit context manager, calls terminate() + wait()."""
-        await self.aclose()
-
-    async def aclose(self, timeout: int = 5) -> None:
-        """Explicit close, terminate with timeout fallback to kill.
-
-        Args:
-            timeout: Seconds to wait after terminate before killing.
-        """
-        self.terminate()
-        try:
-            await asyncio.wait_for(self.wait(), timeout=timeout)
-        except asyncio.TimeoutError:
-            self.kill()
-        finally:
-            # Always wait for reader tasks to complete
-            await self._wait_readers()
 
     async def _wait_readers(self) -> None:
         """Wait for stdout/stderr reader tasks to complete."""
@@ -182,26 +229,39 @@ class NsjailProcess:
         await asyncio.gather(*tasks, return_exceptions=True)
 
 
-async def start(
+async def create_nsjail_process(
     command: str,
     args: list[str] | None = None,
-    options: object | None = None,  # NsjailOptions, but avoid circular import
-    auto_print: bool = False,
-    buffer_size: int = 1024,
+    options: object | None = None,
+    config_file: StrPath | None = None,
+    buffer_size: int = 256,
     chunk_size: int = 65536,
+    tee: bool = False,
 ) -> NsjailProcess:
-    """Start an nsjail process.
+    """Create and start an nsjail process.
+
+    This is the recommended way to create a :class:`NsjailProcess` instance.
+    Do not call :class:`NsjailProcess` constructor directly.
 
     Args:
         command: Command to execute inside nsjail
         args: Command arguments
         options: NsjailOptions instance
-        auto_print: Whether to auto-print output
-        buffer_size: Queue size for stream() (max items)
-        chunk_size: Read chunk size in bytes (default 64KB)
+        config_file: Path to nsjail config file (applied before options, can be overridden)
+        buffer_size: Queue size for stream read (max items)
+        chunk_size: Read chunk size in bytes
+        tee: If True, forward output to console while still capturing for stream()
 
     Returns:
         NsjailProcess instance
+
+    Example:
+        >>> proc = await create_nsjail_process(
+        ...     command="/bin/echo",
+        ...     args=["hello"],
+        ...     options=NsjailOptions(chroot="/"),
+        ... )
+        >>> await proc.wait()
     """
 
     # Find nsjail binary
@@ -211,6 +271,10 @@ async def start(
 
     # Build command
     cmd_args: list[str] = [str(nsjail_bin)]
+
+    # Config file first (allows override by later options)
+    if config_file is not None:
+        cmd_args.extend(["--config", str(config_file)])
 
     if options is not None:
         if isinstance(options, NsjailOptions):
@@ -233,7 +297,10 @@ async def start(
 
     # Create wrapper
     nsjail_proc = NsjailProcess(
-        proc, auto_print=auto_print, buffer_size=buffer_size, chunk_size=chunk_size
+        proc, tee=tee, buffer_size=buffer_size, chunk_size=chunk_size
     )
+
+    # Start readers (explicit, not in __init__)
+    nsjail_proc._start_internal_read()
 
     return nsjail_proc

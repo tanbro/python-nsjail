@@ -6,7 +6,6 @@ from dataclasses import dataclass
 from collections.abc import Mapping, Sequence
 
 
-
 __all__ = ["NsjailOptions"]
 
 
@@ -51,10 +50,7 @@ class NsjailOptions:
     disable_clone_newuser: bool | None = None
     disable_clone_newpid: bool | None = None
 
-    # Config file
-    config_file: str | None = None  # --config FILE
-
-    def build_args(self) -> list[str]:
+    def build_args(self) -> Sequence[str]:
         """Build nsjail command line argument list.
 
         Rules:
@@ -68,10 +64,6 @@ class NsjailOptions:
 
         # Always use ONCE mode (keep short format, it's stable)
         args.append("-Mo")
-
-        # Config file (applied first, overrides work)
-        if self.config_file is not None:
-            args.extend(["--config", self.config_file])
 
         # Filesystem
         if self.chroot is not None:

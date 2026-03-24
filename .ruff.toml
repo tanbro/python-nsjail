@@ -1,4 +1,7 @@
-src = ["src", "tests", "setup.py"]
+# Target Python 3.9+
+target-version = "py39"
+
+# Exclude C++ submodule
 extend-exclude = [
     "nsjail",     # C++ submodule root directory
     "nsjail/**",  # All files under nsjail/

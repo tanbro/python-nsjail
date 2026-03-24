@@ -1,11 +1,17 @@
-"""Async process management for nsjail."""
+"""Unified process management for nsjail and nsenter.
+
+This module provides:
+- ManagedProcess: Base class for subprocess management with dual-stream support
+- NsjailProcess: Alias for ManagedProcess (for backwards compatibility)
+- NsenterProcess: ManagedProcess with target_pid and namespaces attributes
+"""
 
 from __future__ import annotations
 
 import asyncio
 import sys
 import warnings
-from typing import AsyncIterator, Literal, TYPE_CHECKING
+from typing import TYPE_CHECKING, AsyncIterator, Literal, Self
 
 if TYPE_CHECKING:
     from _typeshed import StrPath
@@ -15,22 +21,43 @@ if sys.version_info < (3, 11):  # pragma: no cover
 else:  # pragma: no cover
     from typing import Self
 
+from . import nsenter
 from .locator import locate_nsjail
 from .options import NsjailOptions
 
-__all__ = ["NsjailProcess", "create_nsjail_process", "StreamSource"]
+__all__ = [
+    "ManagedProcess",
+    "NsjailProcess",
+    "NsenterProcess",
+    "create_nsjail_process",
+    "create_nsenter_process",
+    "StreamSource",
+    "NamespaceType",
+]
 
 StreamSource = Literal["stdout", "stderr"]
+NamespaceType = Literal["net", "mnt", "ipc", "uts", "pid", "user", "cgroup"]
+
+# nsenter namespace flags
+_NS_FLAGS = {
+    "net": "-n",
+    "mnt": "-m",
+    "ipc": "-i",
+    "uts": "-u",
+    "pid": "-p",
+    "user": "-U",
+    "cgroup": "-C",
+}
 
 
-class NsjailProcess:
-    """A running nsjail process with dual-stream output support.
+# ==================== Base Class ====================
 
-    Uses a single asyncio.Queue to preserve output ordering between stdout and stderr.
-    Queue is lazily created on first stream() call.
+
+class ManagedProcess:
+    """A running async sub-process wrapper with dual-stream output support.
 
     Note:
-        Do not instantiate this class directly. Use :func:`create_nsjail_process` instead.
+        Do not instantiate this class directly.
     """
 
     # ===== Special methods =====
@@ -68,6 +95,8 @@ class NsjailProcess:
         self._queue: asyncio.Queue[tuple[StreamSource, bytes]] = asyncio.Queue(
             maxsize=buffer_size
         )
+
+        self._start_internal_read()
 
     def __del__(self) -> None:
         """Warn if process was not properly closed."""
@@ -124,11 +153,25 @@ class NsjailProcess:
 
     def terminate(self) -> None:
         """Gracefully stop (SIGTERM), non-blocking."""
-        self._proc.terminate()
+        try:
+            self._proc.terminate()
+        except ProcessLookupError as e:
+            warnings.warn(
+                f"Process {self.pid} already terminated: {e}",
+                RuntimeWarning,
+                stacklevel=2,
+            )
 
     def kill(self) -> None:
         """Force kill (SIGKILL), non-blocking."""
-        self._proc.kill()
+        try:
+            self._proc.kill()
+        except ProcessLookupError as e:
+            warnings.warn(
+                f"Process {self.pid} already dead: {e}",
+                RuntimeWarning,
+                stacklevel=2,
+            )
 
     async def aclose(self, timeout: int = 5) -> None:
         """Explicit close, terminate with timeout fallback to kill.
@@ -136,14 +179,14 @@ class NsjailProcess:
         Args:
             timeout: Seconds to wait after terminate before killing.
         """
-        self.terminate()
-        try:
-            await asyncio.wait_for(self.wait(), timeout=timeout)
-        except asyncio.TimeoutError:
-            self.kill()
-        finally:
-            # Always wait for reader tasks to complete
-            await self._wait_readers()
+        if self.is_running():
+            self.terminate()
+            try:
+                await asyncio.wait_for(self.wait(), timeout=timeout)
+            except asyncio.TimeoutError:
+                self.kill()
+        # Always wait for reader tasks to complete
+        await self._wait_readers()
 
     # ===== Output handling =====
 
@@ -236,6 +279,53 @@ class NsjailProcess:
                     await self._queue.put((source, b""))
 
 
+# ==================== Subclasses ====================
+NsjailProcess = ManagedProcess
+
+
+class NsenterProcess(ManagedProcess):
+    """Process running inside another container's namespace via nsenter.
+
+    Attributes:
+        target_pid: PID of the target process whose namespace we're entering
+        namespaces: List of namespace types being entered
+
+    Example:
+        >>> proc = await create_nsenter_process(1234, ["net"], ["ip", "addr"])
+        >>> print(f"Target PID: {proc.target_pid}")
+        >>> print(f"Namespaces: {proc.namespaces}")
+        >>> async for source, chunk in proc.stream():
+        ...     print(chunk.decode())
+    """
+
+    def __init__(
+        self,
+        proc: asyncio.subprocess.Process,
+        target_pid: int,
+        namespaces: list[NamespaceType],
+        buffer_size: int = 100,
+        chunk_size: int = 1024,
+        tee: bool = False,
+    ):
+        """Initialize NsenterProcess.
+
+        Args:
+            proc: The underlying asyncio subprocess
+            target_pid: PID of the target process
+            namespaces: List of namespace types being entered
+            buffer_size: Queue size for stream()
+            chunk_size: Read chunk size in bytes
+            tee: Whether to tee output to console
+        """
+        self.target_pid = target_pid
+        self.namespaces = namespaces
+
+        super().__init__(proc, buffer_size, chunk_size, tee)
+
+
+# ==================== Factory Functions ====================
+
+
 async def create_nsjail_process(
     command: str,
     args: list[str] | None = None,
@@ -298,13 +388,74 @@ async def create_nsjail_process(
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
-
-    # Create wrapper
+    # Create wrapper and start readers
     nsjail_proc = NsjailProcess(
-        proc, tee=tee, buffer_size=buffer_size, chunk_size=chunk_size
+        proc, buffer_size=buffer_size, chunk_size=chunk_size, tee=tee
     )
 
-    # Start readers (explicit, not in __init__)
-    nsjail_proc._start_internal_read()
-
     return nsjail_proc
+
+
+async def create_nsenter_process(
+    target_pid: int,
+    namespaces: list[NamespaceType],
+    command: list[str],
+    buffer_size: int = 100,
+    chunk_size: int = 1024,
+    tee: bool = False,
+) -> NsenterProcess:
+    """Create and start a process inside another container's namespace via nsenter.
+
+    This uses the system's nsenter command (from util-linux) to execute commands
+    inside the Linux namespaces of a target process.
+
+    Args:
+        target_pid: PID of the target process whose namespace to enter
+        namespaces: List of namespace types to enter (net, mnt, ipc, uts, pid, user, cgroup)
+        command: Command and arguments to execute inside the namespace
+        buffer_size: Queue size for stream read (max items)
+        chunk_size: Read chunk size in bytes
+        tee: If True, forward output to console while still capturing for stream()
+
+    Returns:
+        NsenterProcess instance
+
+    Raises:
+        RuntimeError: If nsenter command is not found on the system
+
+    Example:
+        >>> # Run 'ip addr' inside container 1234's network namespace
+        >>> proc = await create_nsenter_process(1234, ["net"], ["ip", "addr"])
+        >>> async for source, chunk in proc.stream():
+        ...     if source == "stdout":
+        ...         print(chunk.decode(), end="")
+        >>> await proc.wait()
+    """
+    # Check nsenter availability
+    nsenter.check_nsenter()
+
+    # Build nsenter command
+    cmd = ["nsenter", "-t", str(target_pid)]
+    for ns in namespaces:
+        flag = _NS_FLAGS.get(ns)
+        if flag is None:
+            raise ValueError(f"Unknown namespace type: {ns}")
+        cmd.append(flag)
+    cmd.extend(["--"] + command)
+
+    # Start subprocess
+    proc = await asyncio.create_subprocess_exec(
+        *cmd,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+
+    # Create and return wrapper
+    return NsenterProcess(
+        proc,
+        target_pid=target_pid,
+        namespaces=namespaces,
+        buffer_size=buffer_size,
+        chunk_size=chunk_size,
+        tee=tee,
+    )

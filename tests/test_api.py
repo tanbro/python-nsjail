@@ -344,6 +344,70 @@ async def test_stream_empty_output():
     assert not has_stdout
 
 
+@pytest.mark.asyncio
+async def test_stream_during_aclose():
+    """Test that stream() exits cleanly when aclose() is called concurrently."""
+    proc = await create_nsjail_process(
+        command="/bin/sh",
+        args=["-c", "while true; do echo x; sleep 0.01; done"],
+        options=NsjailOptions(chroot="/"),
+    )
+
+    # Start streaming in background
+    stream_task = asyncio.create_task(proc.stream().__anext__())
+
+    # Give it time to start reading
+    await asyncio.sleep(0.05)
+
+    # Close while stream is active
+    await proc.aclose()
+
+    # Stream should handle EOF gracefully
+    # The task should complete without hanging
+    try:
+        await stream_task
+    except StopAsyncIteration:
+        # Expected: stream exhausted
+        pass
+
+    assert not proc.is_running()
+
+
+@pytest.mark.asyncio
+async def test_aclose_with_active_stream():
+    """Test aclose() EOF fallback when stream() is consuming."""
+    proc = await create_nsjail_process(
+        command="/bin/sleep",
+        args=["3600"],
+        options=NsjailOptions(chroot="/"),
+    )
+
+    # Start streaming
+    stream_started = False
+
+    async def slow_stream():
+        nonlocal stream_started
+        stream_started = True
+        count = 0
+        async for source, chunk in proc.stream():
+            count += 1
+            if count >= 1:
+                break  # Get first chunk then stop
+
+    stream_task = asyncio.create_task(slow_stream())
+
+    # Wait for stream to start
+    await asyncio.sleep(0.1)
+
+    # Close process
+    await proc.aclose()
+
+    # Stream should exit cleanly via EOF markers
+    await stream_task
+
+    assert not proc.is_running()
+
+
 # ===== Kill Tests =====
 
 

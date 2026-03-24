@@ -12,7 +12,7 @@ license = "Apache-2.0"
 requires-python = ">=3.9"
 
 dependencies = [
-  "typing-extension>=3.9.0; python_version < '3.11'",
+  "typing-extensions>=3.9.0; python_version < '3.11'",
 ]
 
 keywords = [

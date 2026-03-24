@@ -9,10 +9,11 @@ from typing import AsyncIterator, Literal, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from _typeshed import StrPath
-if sys.version_info >= (3, 11):
-    from typing import Self
-else:
+
+if sys.version_info < (3, 11):
     from typing_extensions import Self
+else:
+    from typing import Self
 
 from .find import find_bundled_nsjail, find_system_nsjail
 from .options import NsjailOptions
@@ -57,7 +58,7 @@ class NsjailProcess:
         self._tee = tee
 
         self._streaming = False
-        self._stderr_eof_received = False
+        self._eof_received: set[StreamSource] = set()
 
         # Reader tasks (started by factory function)
         self._read_stdout_task: asyncio.Task[None] | None = None
@@ -162,11 +163,9 @@ class NsjailProcess:
         while True:
             source, chunk = await self._queue.get()
             if not chunk:  # EOF marker
-                # Wait for both streams to finish
-                if source == "stdout" and self._stderr_eof_received:
+                self._eof_received.add(source)
+                if len(self._eof_received) == 2:  # Both stdout and stderr done
                     break
-                elif source == "stderr":
-                    self._stderr_eof_received = True
                 continue
             yield (source, chunk)
 
@@ -184,8 +183,9 @@ class NsjailProcess:
         - If tee=True: print to console and optionally queue for stream()
         - If streaming: put into queue, discard oldest when full (ring buffer)
         """
-        stream = self._proc.stdout if source == "stdout" else self._proc.stderr
-        if stream is None:
+        if (
+            stream := self._proc.stdout if source == "stdout" else self._proc.stderr
+        ) is None:
             raise RuntimeError(f"{source} stream is None")
 
         while True:
@@ -228,6 +228,12 @@ class NsjailProcess:
 
         # Wait for cancellation to take effect (ignore CancelledError)
         await asyncio.gather(*tasks, return_exceptions=True)
+
+        # Fallback: ensure EOF markers are sent even if tasks were cancelled mid-read
+        if self._streaming:
+            for source in ("stdout", "stderr"):
+                if source not in self._eof_received:
+                    await self._queue.put((source, b""))
 
 
 async def create_nsjail_process(

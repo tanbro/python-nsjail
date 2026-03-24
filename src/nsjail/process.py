@@ -6,6 +6,7 @@ import asyncio
 import sys
 import warnings
 from typing import AsyncIterator, Literal, TYPE_CHECKING
+
 if TYPE_CHECKING:
     from _typeshed import StrPath
 if sys.version_info >= (3, 11):

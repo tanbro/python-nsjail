@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, Sequence, Iterable
 
 
 __all__ = ["NsjailOptions"]
@@ -50,7 +50,7 @@ class NsjailOptions:
     disable_clone_newuser: bool | None = None
     disable_clone_newpid: bool | None = None
 
-    def build_args(self) -> Sequence[str]:
+    def build_args(self) -> Iterable[str]:
         """Build nsjail command line argument list.
 
         Rules:
@@ -62,8 +62,7 @@ class NsjailOptions:
         """
         args: list[str] = []
 
-        # Always use ONCE mode (keep short format, it's stable)
-        args.append("-Mo")
+        # Always use ONCE mode (default: 'o' [MODE_STANDALONE_ONCE])
 
         # Filesystem
         if self.chroot is not None:

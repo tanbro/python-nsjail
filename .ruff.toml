@@ -1,17 +1,12 @@
-src = ["src", "tests", "setup.py"]
-extend-exclude = ["nsjail"]
-
-[lint]
-extend-select = ["I"]
-
-[lint.mccabe]
-# Unlike Flake8, default to a complexity level of 10.
-max-complexity = 10
+# Exclude C++ submodule at project root (not src/nsjail!)
+exclude = [
+  "./nsjail", # C++ submodule root directory
+  "build",
+]
 
 # Ignore `F401`(imported but unused), `F403`(import *` used), `E402`(import violations) in `__init__.py`
 [lint.per-file-ignores]
 "__init__.py" = ["E402", "F401", "F403"]
-
 
 [format]
 docstring-code-format = true

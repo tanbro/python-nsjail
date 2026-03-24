@@ -4,63 +4,7 @@
 
 ## Overview
 
-`python-nsjail` distributes the nsjail binary as a Python package for easy installation via `pip`.
-
-**Note**: This is not a Python library — it only provides the nsjail binary executable.
-
-## Installation
-
-```bash
-pip install python-nsjail
-```
-
-This creates an `nsjail` command in your environment's `bin/` directory (e.g., `~/.local/bin/nsjail` or `/some/where/.venv/bin/nsjail`).
-
-**How it works**: The `nsjail` command is a small Python wrapper that executes the actual nsjail binary bundled inside the package. The wrapper uses `os.execl()` to replace itself with the real binary, preserving the process ID.
-
-### Virtual Environment (Recommended)
-
-Using a virtual environment keeps nsjail isolated:
-
-```bash
-# Create venv
-python -m venv .venv
-source .venv/bin/activate
-
-# Install python-nsjail
-pip install python-nsjail
-
-# Verify
-nsjail-status
-```
-
-## Usage
-
-### Command line
-
-```bash
-nsjail --help
-```
-
-### Check nsjail path
-
-```bash
-nsjail-find
-```
-
-Output:
-```
-nsjail status:
-  System PATH:   /root/workspaces/python-nsjail/.venv/bin/nsjail
-  Bundled:       /root/workspaces/python-nsjail/src/nsjail/nsjail
-
-Package version: 0.1.0b3.dev1+g71c0da62d.d20260323
-Bundled nsjail:  3.6
-```
-
-## Building from Source
-
-For development or building from source, see [CONTRIBUTING.md](CONTRIBUTING.md).
+**Just install and use** — no compilation required. `python-nsjail` provides prebuilt nsjail binaries as Python wheels, making the powerful Linux namespace sandbox immediately available.
 
 ## System Requirements
 
@@ -81,6 +25,138 @@ For development or building from source, see [CONTRIBUTING.md](CONTRIBUTING.md).
 > ⚠️ **`x86-64-v2` Note**: \
 > The x86_64 wheels are built with `manylinux_2_34` containers which use `x86-64-v2` by default. This requires a CPU from ~2010 or later (supports SSE4.2 and POPCNT instructions). Most modern systems support this.
 > If you need to run on older x86-64 hardware (pre-2010), please use the source distribution or build from source.
+
+## Installation
+
+```bash
+pip install python-nsjail
+```
+
+Now run:
+
+```bash
+nsjail --help
+```
+
+You got `nsjail` installed!
+
+### Where is the nsjail binary?
+
+The installation location depends on how you install:
+
+**Virtual environment** (recommended):
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install python-nsjail
+# Binary: .venv/bin/nsjail
+```
+
+**User install**:
+```bash
+pip install --user python-nsjail
+# Binary: ~/.local/bin/nsjail
+```
+
+**System install** (requires root):
+```bash
+pip install python-nsjail
+# Binary: /usr/local/bin/nsjail
+```
+
+### Verify Installation
+
+```bash
+nsjail --help
+```
+
+and the status(in python environment's scripts directory):
+
+```bash
+nsjail-status
+```
+
+Output:
+```
+nsjail status:
+  System PATH:   /usr/bin/nsjail
+  Bundled:       /path/to/bundled/nsjail
+  Script:        /path/to/wrapper/nsjail
+
+Package version: 0.1.0
+Bundled nsjail:  3.6
+```
+
+### Getting the Binary Path from Python
+
+If you need the nsjail binary path in your scripts:
+
+```python
+from nsjail import bundled_binary
+
+nsjail_path = bundled_binary()
+print(nsjail_path)  # /absolute/path/to/nsjail
+```
+
+Or use `locate_nsjail()` which respects the `NSJAIL` environment variable:
+
+```python
+from nsjail import locate_nsjail
+
+nsjail_path = locate_nsjail()
+```
+
+## Python API
+
+For programmatic sandboxing, use the async Python API:
+
+**Environment Variable** (for Python API only):
+
+`NSJAIL` - Override the nsjail binary path
+
+```bash
+export NSJAIL=/custom/path/to/nsjail
+```
+
+Supports `~` and `$VAR` expansion:
+```bash
+export NSJAIL=~/local/bin/nsjail
+export NSJAIL=$XDG_DATA_HOME/nsjail/bin/nsjail
+```
+
+```python
+import asyncio
+from nsjail import NsjailOptions, NsjailProcess, create_nsjail_process
+
+async def main():
+    # Basic usage
+    proc = await create_nsjail_process(
+        command="/bin/echo",
+        args=["hello"],
+        options=NsjailOptions(chroot="/"),
+    )
+    await proc.wait()
+
+    # Stream output
+    proc = await create_nsjail_process(
+        command="/bin/cat",
+        args=["/etc/hostname"],
+        options=NsjailOptions(
+            chroot="/",
+            user="nobody",
+            mounts=[("/etc/hostname", "/etc/hostname", "ro")],
+        ),
+    )
+    async for source, chunk in proc.stream():
+        if source == "stdout":
+            print(chunk.decode())
+
+asyncio.run(main())
+```
+
+## Building from Source
+
+For development or building from source, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 

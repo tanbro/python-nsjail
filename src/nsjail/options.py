@@ -11,10 +11,7 @@ __all__ = ["NsjailOptions"]
 
 @dataclass
 class NsjailOptions:
-    """nsjail command line options (arguments before '--').
-
-    Execution mode is fixed to ONCE (-Mo), mode parameter is not exposed.
-    """
+    """nsjail command line options (arguments before '--')."""
 
     # Filesystem
     chroot: str | None = None  # --chroot DIR
@@ -57,13 +54,9 @@ class NsjailOptions:
         - None values don't generate arguments
         - Empty containers ({}, []) don't generate arguments
         - Other values (including "", 0, False) generate corresponding arguments
-        - Always adds -Mo (ONCE mode)
         - Uses long format for all options (e.g. --chroot, not -c)
         """
         args: list[str] = []
-
-        # Always use ONCE mode (default: 'o' [MODE_STANDALONE_ONCE])
-        args.append("-Mo")
 
         # Filesystem
         if self.chroot is not None:

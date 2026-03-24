@@ -54,7 +54,8 @@ version_file = "src/nsjail/version.py"
 [dependency-groups]
 dev = [
   "setuptools>=80.0",
-  "pytest>=8.0",
+  "pytest",
   "pytest-asyncio",
+  "pytest-cov",
   "mypy",
 ]

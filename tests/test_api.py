@@ -97,7 +97,6 @@ def test_options_build_args():
     )
     args = options.build_args()
 
-    assert "-Mo" in args
     assert "--chroot" in args
     assert "/srv/jail" in args
     assert "--user" in args
@@ -112,8 +111,8 @@ def test_options_none_values():
     options = NsjailOptions()
     args = options.build_args()
 
-    # Should only have -Mo
-    assert args == ["-Mo"]
+    # Should be empty when no options specified
+    assert args == []
 
 
 def test_options_empty_containers():
@@ -121,8 +120,8 @@ def test_options_empty_containers():
     options = NsjailOptions(env={}, bindmount=[], bindmount_ro=[], tmpfsmount=[])
     args = options.build_args()
 
-    # Should only have -Mo
-    assert args == ["-Mo"]
+    # Should be empty when all containers are empty
+    assert args == []
 
 
 def test_options_bindmount():
@@ -438,7 +437,6 @@ def test_options_with_config_file():
     )
     args = options.build_args()
 
-    # Should have -Mo and --chroot
-    assert "-Mo" in args
+    # Should have --chroot
     assert "--chroot" in args
     assert "/srv/jail" in args

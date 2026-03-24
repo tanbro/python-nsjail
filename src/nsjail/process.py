@@ -10,9 +10,9 @@ from typing import AsyncIterator, Literal, TYPE_CHECKING
 if TYPE_CHECKING:
     from _typeshed import StrPath
 
-if sys.version_info < (3, 11):
+if sys.version_info < (3, 11):  # pragma: no cover
     from typing_extensions import Self
-else:
+else:  # pragma: no cover
     from typing import Self
 
 from .find import find_bundled_nsjail, find_system_nsjail

@@ -15,7 +15,7 @@ if sys.version_info < (3, 11):  # pragma: no cover
 else:  # pragma: no cover
     from typing import Self
 
-from .find import find_bundled_nsjail, find_system_nsjail
+from .find import get_nsjail_path
 from .options import NsjailOptions
 
 __all__ = ["NsjailProcess", "create_nsjail_process", "StreamSource"]
@@ -272,12 +272,9 @@ async def create_nsjail_process(
     """
 
     # Find nsjail binary
-    nsjail_bin = find_system_nsjail() or find_bundled_nsjail()
-    if nsjail_bin is None:
-        raise RuntimeError("nsjail binary not found")
-
+    nsjail_path = get_nsjail_path()
     # Build command
-    cmd_args: list[str] = [str(nsjail_bin)]
+    cmd_args: list[str] = [str(nsjail_path)]
 
     # Config file first (allows override by later options)
     if config_file is not None:

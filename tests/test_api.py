@@ -440,3 +440,38 @@ def test_options_with_config_file():
     # Should have --chroot
     assert "--chroot" in args
     assert "/srv/jail" in args
+
+
+# ===== Binary Finding Tests =====
+
+
+def test_get_nsjail_path():
+    """Test that get_nsjail_path() works correctly."""
+    from nsjail.find import get_nsjail_path
+
+    # Should find bundled nsjail if package is installed
+    result = get_nsjail_path()
+
+    # Result should be an absolute path
+    assert result.is_absolute()
+    assert result.name == "nsjail"
+
+
+def test_bundled_binary():
+    """Test that bundled_binary() returns the bundled binary."""
+    from nsjail.find import bundled_binary
+
+    result = bundled_binary()
+    assert result.is_absolute()
+    assert result.name == "nsjail"
+
+
+def test_console_script():
+    """Test that console_script() returns the wrapper script."""
+    from nsjail.find import console_script
+
+    result = console_script()
+    # May not exist in all environments
+    if result:
+        assert result.is_absolute()
+        assert result.name == "nsjail"

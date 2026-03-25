@@ -134,21 +134,19 @@ export NSJAIL=$XDG_DATA_HOME/nsjail/bin/nsjail
 
 ```python
 import asyncio
-from nsjail import NsjailOptions, NsjailProcess, create_nsjail_process
+from nsjail import create_nsjail_process, create_nsenter_process, NsjailOptions
 
 async def main():
     # Basic usage
     proc = await create_nsjail_process(
-        command="/bin/echo",
-        args=["hello"],
+        command=["/bin/echo", "hello"],
         options=NsjailOptions(chroot="/"),
     )
     await proc.wait()
 
     # Stream output
     proc = await create_nsjail_process(
-        command="/bin/cat",
-        args=["/etc/hostname"],
+        command=["/bin/cat", "/etc/hostname"],
         options=NsjailOptions(
             chroot="/",
             user="nobody",
@@ -158,6 +156,22 @@ async def main():
     async for source, chunk in proc.stream():
         if source == "stdout":
             print(chunk.decode())
+
+    # Interactive stdin (with writable_stdin=True)
+    proc = await create_nsjail_process(
+        command=["/bin/cat"],
+        options=NsjailOptions(chroot="/"),
+        writable_stdin=True,
+    )
+    await proc.write(b"hello world\n")
+    # ... read output via stream()
+
+    # Use nsenter to enter existing container namespace
+    nsenter_proc = await create_nsenter_process(
+        target_pid=1234,
+        namespaces=["net", "mnt"],
+        command=["ip", "addr"],
+    )
 
 asyncio.run(main())
 ```

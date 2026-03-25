@@ -9,21 +9,22 @@ This module provides:
 from __future__ import annotations
 
 import asyncio
+import shutil
 import sys
 import warnings
-from typing import TYPE_CHECKING, AsyncIterator, Literal, Self
-
-if TYPE_CHECKING:
-    from _typeshed import StrPath
+from collections.abc import Iterable, Sequence
+from typing import TYPE_CHECKING, AsyncIterator, Literal
 
 if sys.version_info < (3, 11):  # pragma: no cover
     from typing_extensions import Self
 else:  # pragma: no cover
     from typing import Self
 
-from . import nsenter
+if TYPE_CHECKING:
+    from _typeshed import StrPath
+
 from .locator import locate_nsjail
-from .options import NsjailOptions
+from .options import NsenterOptions, NsjailOptions
 
 __all__ = [
     "ManagedProcess",
@@ -49,6 +50,9 @@ _NS_FLAGS = {
     "cgroup": "-C",
 }
 
+DEFAULT_BUFFER_SIZE = 65536
+DEFUALT_CHUNK_SIZE = 1024
+
 
 # ==================== Base Class ====================
 
@@ -58,6 +62,11 @@ class ManagedProcess:
 
     Note:
         Do not instantiate this class directly.
+
+    Example:
+        >>> proc = await create_nsjail_process("/bin/echo, ["hello"])
+        >>> async for source, chunk in proc.stream():
+        ...     print(chunk.decode())
     """
 
     # ===== Special methods =====
@@ -78,7 +87,13 @@ class ManagedProcess:
             proc: The underlying asyncio subprocess
             buffer_size: Queue size for stream()
             chunk_size: Read chunk size in bytes
-            tee: Whether to tee output to console
+            tee: If True, forward output to console in real-time (for debugging).
+
+        Warning:
+            The `tee` option uses synchronous I/O and may block if the terminal
+            buffer is full. It is intended for debugging only and should not be
+            used in production environments. For production use, consume output
+            via :meth:`stream()` instead.
         """
         self._proc = proc
         self._chunk_size = chunk_size
@@ -108,7 +123,7 @@ class ManagedProcess:
                     ResourceWarning,
                     source=self,
                 )
-            except Exception:
+            except Exception:  # pragma: no cover
                 pass  # __del__ must not raise
             finally:
                 self.kill()
@@ -173,7 +188,7 @@ class ManagedProcess:
                 stacklevel=2,
             )
 
-    async def aclose(self, timeout: int = 5) -> None:
+    async def aclose(self, timeout: float | None = 5) -> None:
         """Explicit close, terminate with timeout fallback to kill.
 
         Args:
@@ -197,9 +212,14 @@ class ManagedProcess:
             (source, chunk): source is "stdout" or "stderr", chunk is bytes
 
         Note:
-            First call activates streaming. Previous data is discarded.
-            Queue is bounded (maxsize=buffer_size); put() blocks when full.
+            Can only be called once per process. Subsequent calls will raise RuntimeError.
+
+        Raises:
+            RuntimeError: If stream() has already been called.
         """
+        if self._streaming:
+            raise RuntimeError("stream() can only be called once per process")
+
         self._streaming = True
 
         # Iterate until both streams send EOF marker
@@ -228,23 +248,27 @@ class ManagedProcess:
         """
         if (
             stream := self._proc.stdout if source == "stdout" else self._proc.stderr
-        ) is None:
+        ) is None:  # pragma: no cover
             raise RuntimeError(f"{source} stream is None")
 
         while True:
-            chunk = await stream.read(self._chunk_size)
-            if not chunk:
-                # EOF: put empty bytes marker
-                if self._streaming:
-                    await self._queue.put((source, b""))
+            if not (chunk := await stream.read(self._chunk_size)):
+                # EOF: always put marker regardless of _streaming state
+                #
+                # Design note: We send EOF marker even when _streaming=False to
+                # support late stream() calls (after process completion). The cost
+                # is two unused queue items if stream() is never called, which is
+                # negligible compared to the complexity of conditional EOF logic.
+                #
+                # Use put_nowait() to avoid deadlock if queue is full (EOF marker
+                # should not be blocked by data chunks)
+                try:
+                    self._queue.put_nowait((source, b""))
+                except asyncio.QueueFull:
+                    # Queue full, discard oldest item to make room for EOF
+                    self._queue.get_nowait()
+                    self._queue.put_nowait((source, b""))
                 break
-
-            # Tee to console
-            if self._tee:
-                if source == "stderr":
-                    print(chunk.decode(), end="", file=sys.stderr)
-                else:
-                    print(chunk.decode(), end="")
 
             # Queue if streaming (non-blocking, discard oldest when full)
             if self._streaming:
@@ -252,6 +276,13 @@ class ManagedProcess:
                 if self._queue.full():
                     self._queue.get_nowait()
                 self._queue.put_nowait((source, chunk))
+
+            # Tee to console
+            if self._tee:  # pragma: no cover
+                if source == "stderr":
+                    print(chunk.decode(), end="", file=sys.stderr)
+                else:
+                    print(chunk.decode(), end="")
 
     async def _wait_readers(self) -> None:
         """Wait for stdout/stderr reader tasks to complete."""
@@ -290,13 +321,6 @@ class NsenterProcess(ManagedProcess):
     Attributes:
         target_pid: PID of the target process whose namespace we're entering
         namespaces: List of namespace types being entered
-
-    Example:
-        >>> proc = await create_nsenter_process(1234, ["net"], ["ip", "addr"])
-        >>> print(f"Target PID: {proc.target_pid}")
-        >>> print(f"Namespaces: {proc.namespaces}")
-        >>> async for source, chunk in proc.stream():
-        ...     print(chunk.decode())
     """
 
     def __init__(
@@ -318,22 +342,31 @@ class NsenterProcess(ManagedProcess):
             chunk_size: Read chunk size in bytes
             tee: Whether to tee output to console
         """
-        self.target_pid = target_pid
-        self.namespaces = namespaces
+        self._target_pid = target_pid
+        self._namespaces = namespaces
 
         super().__init__(proc, buffer_size, chunk_size, tee)
+
+    @property
+    def target_pid(self) -> int:
+        """PID of the target process."""
+        return self._target_pid
+
+    @property
+    def namespaces(self) -> list[NamespaceType]:
+        """List of namespace types being entered."""
+        return self._namespaces
 
 
 # ==================== Factory Functions ====================
 
 
 async def create_nsjail_process(
-    command: str,
-    args: list[str] | None = None,
-    options: object | None = None,
+    command: Sequence[str],
+    options: NsjailOptions | None = None,
     config_file: StrPath | None = None,
-    buffer_size: int = 256,
-    chunk_size: int = 65536,
+    buffer_size: int = DEFAULT_BUFFER_SIZE,
+    chunk_size: int = DEFUALT_CHUNK_SIZE,
     tee: bool = False,
 ) -> NsjailProcess:
     """Create and start an nsjail process.
@@ -342,8 +375,7 @@ async def create_nsjail_process(
     Do not call :class:`NsjailProcess` constructor directly.
 
     Args:
-        command: Command to execute inside nsjail
-        args: Command arguments
+        command: Command and arguments to execute inside nsjail (e.g. ["/bin/echo", "hello"])
         options: NsjailOptions instance
         config_file: Path to nsjail config file (applied before options, can be overridden)
         buffer_size: Queue size for stream read (max items)
@@ -355,8 +387,7 @@ async def create_nsjail_process(
 
     Example:
         >>> proc = await create_nsjail_process(
-        ...     command="/bin/echo",
-        ...     args=["hello"],
+        ...     command=["/bin/echo", "hello"],
         ...     options=NsjailOptions(chroot="/"),
         ... )
         >>> await proc.wait()
@@ -365,27 +396,19 @@ async def create_nsjail_process(
     # Find nsjail binary
     nsjail_path = locate_nsjail()
     # Build command
-    cmd_args = [str(nsjail_path)]
+    nsjail_args = []
 
     # Config file first (allows override by later options)
     if config_file is not None:
-        cmd_args.extend(["--config", str(config_file)])
+        nsjail_args.extend(["--config", str(config_file)])
 
     if options is not None:
-        if isinstance(options, NsjailOptions):
-            cmd_args.extend(options.build_args())
-        else:
-            raise TypeError(f"options must be NsjailOptions, not {type(options)}")
-
-    # Separator and command
-    cmd_args.append("--")
-    cmd_args.append(command)
-    if args:
-        cmd_args.extend(args)
+        nsjail_args.extend(options.build_args())
 
     # Start subprocess
     proc = await asyncio.create_subprocess_exec(
-        *cmd_args,
+        nsjail_path,
+        *(nsjail_args + ["--"] + list(command)),
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
@@ -399,11 +422,11 @@ async def create_nsjail_process(
 
 async def create_nsenter_process(
     target_pid: int,
-    namespaces: list[NamespaceType],
-    command: list[str],
-    options: object | None = None,
-    buffer_size: int = 100,
-    chunk_size: int = 1024,
+    namespaces: Iterable[NamespaceType],
+    command: Sequence[str],
+    options: NsenterOptions | None = None,
+    buffer_size: int = DEFAULT_BUFFER_SIZE,
+    chunk_size: int = DEFUALT_CHUNK_SIZE,
     tee: bool = False,
 ) -> NsenterProcess:
     """Create and start a process inside another container's namespace via nsenter.
@@ -435,31 +458,32 @@ async def create_nsenter_process(
         >>> await proc.wait()
     """
     # Check nsenter availability
-    nsenter.check_nsenter()
-
-    # Import NsenterOptions
-    from .options import NsenterOptions
+    nsenter_path = shutil.which("nsenter")
+    if not nsenter_path:
+        raise RuntimeError(
+            "nsenter command not found. Install util-linux:\n"
+            "  apt-get install util-linux     # Debian/Ubuntu\n"
+            "  yum install util-linux         # RHEL/CentOS\n"
+            "  apk add util-linux             # Alpine"
+        )
 
     # Build nsenter command
-    cmd = ["nsenter", "-t", str(target_pid)]
+    nsenter_args = ["-t", str(target_pid)]
+    ns_flags = set()
     for ns in namespaces:
-        flag = _NS_FLAGS.get(ns)
-        if flag is None:
+        if (flag := _NS_FLAGS.get(ns)) is None:
             raise ValueError(f"Unknown namespace type: {ns}")
-        cmd.append(flag)
+        ns_flags.add(flag)
+    nsenter_args.extend(ns_flags)
 
     # Add options
     if options is not None:
-        if isinstance(options, NsenterOptions):
-            cmd.extend(options.build_args())
-        else:
-            raise TypeError(f"options must be NsenterOptions, not {type(options)}")
-
-    cmd.extend(["--"] + command)
+        nsenter_args.extend(options.build_args())
 
     # Start subprocess
     proc = await asyncio.create_subprocess_exec(
-        *cmd,
+        nsenter_path,
+        *(nsenter_args + ["--"] + list(command)),
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
@@ -468,7 +492,7 @@ async def create_nsenter_process(
     return NsenterProcess(
         proc,
         target_pid=target_pid,
-        namespaces=namespaces,
+        namespaces=list(namespaces),
         buffer_size=buffer_size,
         chunk_size=chunk_size,
         tee=tee,

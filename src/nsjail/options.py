@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from collections.abc import Mapping, Sequence, Iterable
+from collections.abc import Mapping, Sequence
 
 
 __all__ = ["NsjailOptions", "NsenterOptions"]
@@ -47,7 +47,7 @@ class NsjailOptions:
     disable_clone_newuser: bool | None = None
     disable_clone_newpid: bool | None = None
 
-    def build_args(self) -> Iterable[str]:
+    def build_args(self) -> Sequence[str]:
         """Build nsjail command line argument list.
 
         Rules:
@@ -142,7 +142,7 @@ class NsenterOptions:
     # Environment
     env: Mapping[str, str] | None = None  # --env K=V
 
-    def build_args(self) -> Iterable[str]:
+    def build_args(self) -> Sequence[str]:
         """Build nsenter command line argument list.
 
         Rules:

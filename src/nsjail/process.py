@@ -50,8 +50,8 @@ _NS_FLAGS = {
     "cgroup": "-C",
 }
 
-DEFAULT_BUFFER_SIZE = 65536
-DEFUALT_CHUNK_SIZE = 1024
+DEFAULT_BUFFER_SIZE = 256
+DEFAULT_CHUNK_SIZE = 8192
 
 
 # ==================== Base Class ====================
@@ -99,7 +99,7 @@ class ManagedProcess:
         self._chunk_size = chunk_size
         self._tee = tee
 
-        self._streaming = False
+        # State management
         self._eof_received: set[StreamType] = set()
 
         # Reader tasks (started by factory function)
@@ -208,26 +208,27 @@ class ManagedProcess:
     async def stream(self) -> AsyncIterator[tuple[StreamType, bytes]]:
         """Stream stdout/stderr with preserved ordering.
 
+        Call this method once and consume the iterator fully.
+        Cannot be called after both streams have reached EOF.
+
         Yields:
             (source, chunk): source is "stdout" or "stderr", chunk is bytes
 
-        Note:
-            Can only be called once per process. Subsequent calls will raise RuntimeError.
-
         Raises:
-            RuntimeError: If stream() has already been called.
+            RuntimeError: If all output has already been consumed
+                (both streams reached EOF).
         """
-        if self._streaming:
-            raise RuntimeError("stream() can only be called once per process")
+        # Check if all output has already been consumed
+        if len(self._eof_received) > 1:
+            raise RuntimeError(
+                "Cannot stream() after all output has been consumed (both streams reached EOF)"
+            )
 
-        self._streaming = True
-
-        # Iterate until both streams send EOF marker
         while True:
             source, chunk = await self._queue.get()
             if not chunk:  # EOF marker
-                self._eof_received.add(source)
-                if len(self._eof_received) == 2:  # Both stdout and stderr done
+                # Check if both streams are done
+                if len(self._eof_received) > 1:
                     break
                 continue
             yield (source, chunk)
@@ -253,15 +254,8 @@ class ManagedProcess:
 
         while True:
             if not (chunk := await stream.read(self._chunk_size)):
-                # EOF: always put marker regardless of _streaming state
-                #
-                # Design note: We send EOF marker even when _streaming=False to
-                # support late stream() calls (after process completion). The cost
-                # is two unused queue items if stream() is never called, which is
-                # negligible compared to the complexity of conditional EOF logic.
-                #
-                # Use put_nowait() to avoid deadlock if queue is full (EOF marker
-                # should not be blocked by data chunks)
+                # EOF: put marker and update global state
+                self._eof_received.add(source)
                 try:
                     self._queue.put_nowait((source, b""))
                 except asyncio.QueueFull:
@@ -270,12 +264,12 @@ class ManagedProcess:
                     self._queue.put_nowait((source, b""))
                 break
 
-            # Queue if streaming (non-blocking, discard oldest when full)
-            if self._streaming:
-                # Discard oldest item to make room if full
-                if self._queue.full():
-                    self._queue.get_nowait()
-                self._queue.put_nowait((source, chunk))
+            # Always queue data (non-blocking, discard oldest when full)
+            # This allows stream() to be called at any time and get recent data
+            # Discard oldest item to make room if full
+            if self._queue.full():
+                self._queue.get_nowait()
+            self._queue.put_nowait((source, chunk))
 
             # Tee to console
             if self._tee:  # pragma: no cover
@@ -302,12 +296,6 @@ class ManagedProcess:
 
         # Wait for cancellation to take effect (ignore CancelledError)
         await asyncio.gather(*tasks, return_exceptions=True)
-
-        # Fallback: ensure EOF markers are sent even if tasks were cancelled mid-read
-        if self._streaming:
-            for source in ("stdout", "stderr"):
-                if source not in self._eof_received:
-                    await self._queue.put((source, b""))
 
 
 # ==================== Subclasses ====================
@@ -366,7 +354,7 @@ async def create_nsjail_process(
     options: NsjailOptions | None = None,
     config_file: StrPath | None = None,
     buffer_size: int = DEFAULT_BUFFER_SIZE,
-    chunk_size: int = DEFUALT_CHUNK_SIZE,
+    chunk_size: int = DEFAULT_CHUNK_SIZE,
     tee: bool = False,
 ) -> NsjailProcess:
     """Create and start an nsjail process.
@@ -426,7 +414,7 @@ async def create_nsenter_process(
     command: Sequence[str],
     options: NsenterOptions | None = None,
     buffer_size: int = DEFAULT_BUFFER_SIZE,
-    chunk_size: int = DEFUALT_CHUNK_SIZE,
+    chunk_size: int = DEFAULT_CHUNK_SIZE,
     tee: bool = False,
 ) -> NsenterProcess:
     """Create and start a process inside another container's namespace via nsenter.
@@ -462,7 +450,7 @@ async def create_nsenter_process(
     if not nsenter_path:
         raise RuntimeError(
             "nsenter command not found. Install util-linux:\n"
-            "  apt-get install util-linux     # Debian/Ubuntu\n"
+            "  apt install util-linux     # Debian/Ubuntu\n"
             "  yum install util-linux         # RHEL/CentOS\n"
             "  apk add util-linux             # Alpine"
         )

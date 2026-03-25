@@ -166,6 +166,33 @@ class ManagedProcess:
         """Wait for process to finish, return exit code."""
         return await self._proc.wait()
 
+    async def write(self, data: bytes):
+        """Write data to process stdin and wait for it to be flushed.
+
+        Args:
+            data: bytes to write.
+
+        Raises:
+            RuntimeError: If stdin is not connected.
+        """
+        if self._proc.stdin is None:
+            raise RuntimeError("stdin is not connected (use writable_stdin=True)")
+        self._proc.stdin.write(data)
+        await self._proc.stdin.drain()
+
+    def write_nowait(self, data: bytes) -> None:
+        """Write data to process stdin without waiting for it to be flushed.
+
+        Args:
+            data: bytes to write.
+
+        Raises:
+            RuntimeError: If stdin is not connected.
+        """
+        if self._proc.stdin is None:
+            raise RuntimeError("stdin is not connected (use writable_stdin=True)")
+        self._proc.stdin.write(data)
+
     def terminate(self) -> None:
         """Gracefully stop (SIGTERM), non-blocking."""
         try:
@@ -356,6 +383,7 @@ async def create_nsjail_process(
     buffer_size: int = DEFAULT_BUFFER_SIZE,
     chunk_size: int = DEFAULT_CHUNK_SIZE,
     tee: bool = False,
+    writable_stdin: bool = False,
 ) -> NsjailProcess:
     """Create and start an nsjail process.
 
@@ -369,6 +397,7 @@ async def create_nsjail_process(
         buffer_size: Queue size for stream read (max items)
         chunk_size: Read chunk size in bytes
         tee: If True, forward output to console while still capturing for stream()
+        writable_stdin: If True, connect stdin to allow writing via write()
 
     Returns:
         NsjailProcess instance
@@ -394,9 +423,11 @@ async def create_nsjail_process(
         nsjail_args.extend(options.build_args())
 
     # Start subprocess
+    stdin_arg = asyncio.subprocess.PIPE if writable_stdin else None
     proc = await asyncio.create_subprocess_exec(
         nsjail_path,
         *(nsjail_args + ["--"] + list(command)),
+        stdin=stdin_arg,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
@@ -416,6 +447,7 @@ async def create_nsenter_process(
     buffer_size: int = DEFAULT_BUFFER_SIZE,
     chunk_size: int = DEFAULT_CHUNK_SIZE,
     tee: bool = False,
+    writable_stdin: bool = False,
 ) -> NsenterProcess:
     """Create and start a process inside another container's namespace via nsenter.
 
@@ -430,6 +462,7 @@ async def create_nsenter_process(
         buffer_size: Queue size for stream read (max items)
         chunk_size: Read chunk size in bytes
         tee: If True, forward output to console while still capturing for stream()
+        writable_stdin: If True, connect stdin to allow writing via write()
 
     Returns:
         NsenterProcess instance
@@ -472,6 +505,7 @@ async def create_nsenter_process(
     proc = await asyncio.create_subprocess_exec(
         nsenter_path,
         *(nsenter_args + ["--"] + list(command)),
+        stdin=asyncio.subprocess.PIPE if writable_stdin else None,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )

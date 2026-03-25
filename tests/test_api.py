@@ -3,7 +3,11 @@
 import asyncio
 import pytest
 
-from nsjail import NsjailOptions, create_nsjail_process
+from nsjail import (
+    NsjailOptions,
+    create_nsjail_process,
+    create_nsenter_process,
+)
 
 
 @pytest.mark.asyncio
@@ -535,6 +539,109 @@ async def test_terminate_already_dead():
     # Process is dead, terminate() should warn but not raise
     with pytest.warns(RuntimeWarning, match="already terminated"):
         proc.terminate()
+
+
+# ===== Stdin Write Tests =====
+
+
+@pytest.mark.asyncio
+async def test_write_stdin():
+    """Test writing to stdin."""
+    proc = await create_nsjail_process(
+        command=["/bin/cat"],
+        options=NsjailOptions(chroot="/"),
+        writable_stdin=True,
+    )
+
+    # Write data and get echo back
+    await proc.write(b"hello world\n")
+    # Close stdin to signal EOF to cat
+    if proc._proc.stdin:
+        proc._proc.stdin.close()
+
+    output = []
+    async for source, chunk in proc.stream():
+        if source == "stdout":
+            output.append(chunk)
+
+    result = b"".join(output).decode()
+    assert "hello world" in result
+    await proc.wait()
+
+
+@pytest.mark.asyncio
+async def test_write_nowait_stdin():
+    """Test write_nowait() for non-blocking stdin write."""
+    proc = await create_nsjail_process(
+        command=["/bin/cat"],
+        options=NsjailOptions(chroot="/"),
+        writable_stdin=True,
+    )
+
+    # Write without waiting
+    proc.write_nowait(b"test data\n")
+    if proc._proc.stdin:
+        proc._proc.stdin.close()
+
+    output = []
+    async for source, chunk in proc.stream():
+        if source == "stdout":
+            output.append(chunk)
+
+    result = b"".join(output).decode()
+    assert "test data" in result
+    await proc.wait()
+
+
+@pytest.mark.asyncio
+async def test_write_without_stdin_raises():
+    """Test that write() raises when stdin is not connected."""
+    proc = await create_nsjail_process(
+        command=["/bin/echo", "test"],
+        options=NsjailOptions(chroot="/"),
+        writable_stdin=False,  # Explicitly disable
+    )
+
+    with pytest.raises(RuntimeError, match="stdin is not connected"):
+        await proc.write(b"should fail\n")
+
+    await proc.wait()
+
+
+@pytest.mark.asyncio
+async def test_nsenter_write_stdin():
+    """Test writing to nsenter process stdin."""
+    # First, create a long-running nsjail process
+    jail_proc = await create_nsjail_process(
+        command=["/bin/sleep", "10"],
+        options=NsjailOptions(chroot="/"),
+    )
+
+    try:
+        # Use nsenter to run cat inside the jail
+        nsenter_proc = await create_nsenter_process(
+            target_pid=jail_proc.pid,
+            namespaces=["mnt", "pid", "uts"],
+            command=["/bin/cat"],
+            writable_stdin=True,
+        )
+
+        # Write to cat via nsenter
+        await nsenter_proc.write(b"via nsenter\n")
+        if nsenter_proc._proc.stdin:
+            nsenter_proc._proc.stdin.close()
+
+        output = []
+        async for source, chunk in nsenter_proc.stream():
+            if source == "stdout":
+                output.append(chunk)
+
+        result = b"".join(output).decode()
+        assert "via nsenter" in result
+        await nsenter_proc.wait()
+    finally:
+        jail_proc.kill()
+        await jail_proc.wait()
 
 
 # ===== Config File Tests =====

@@ -316,8 +316,8 @@ class NsenterProcess(ManagedProcess):
         proc: asyncio.subprocess.Process,
         target_pid: int,
         namespaces: list[NamespaceType],
-        buffer_size: int = 100,
-        chunk_size: int = 1024,
+        buffer_size: int = DEFAULT_BUFFER_SIZE,
+        chunk_size: int = DEFAULT_CHUNK_SIZE,
         tee: bool = False,
     ):
         """Initialize NsenterProcess.

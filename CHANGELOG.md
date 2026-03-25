@@ -1,5 +1,55 @@
 # CHANGELOG
 
+## [v0.2.0]
+
+📅 Released 2025-03-25
+
+### ✨ Added
+
+- **nsenter integration** - Execute commands inside existing container namespaces
+  - `create_nsenter_process()` - Create process via nsenter command
+  - `NsenterOptions` - Configuration for nsenter (cwd, env)
+  - Support for all namespace types: net, mnt, ipc, uts, pid, user, cgroup
+
+- **stdin write support** - Interactive process communication
+  - `write(data: bytes)` - Async write with drain (wait for flush)
+  - `write_nowait(data: bytes)` - Non-blocking write to buffer
+  - `writable_stdin` parameter - Control stdin connection in factory functions
+
+- **`nsjail-status` command** - Display installation and binary location info
+
+### 🔄 Changed
+
+- **API simplification** - Merged `command` and `args` into single `command: Sequence[str]` parameter
+  - Before: `create_nsjail_process(command="/bin/echo", args=["hello"])`
+  - After: `create_nsjail_process(command=["/bin/echo", "hello"])`
+
+- **stream() state management** - Simplified by removing mutual exclusion lock
+  - Always queue data (regardless of stream activity)
+  - Check EOF state instead of tracking active stream
+
+- **Default buffer settings** - Optimized for sandbox service scenarios
+  - `buffer_size`: 65536 → 256 (queue items, ~2MB per process)
+  - `chunk_size`: 1024 → 8192 (better I/O efficiency, lower latency)
+
+### 🗑️ Removed
+
+- **Unused modules** - Cleaned up redundant code
+  - `NamespaceContext` - Untested Python 3.12+ programmatic namespace entry
+  - `nsenter.py` wrapper module - Functionality moved to process.py
+  - `_compat.py` ctypes fallback - Only used by removed context.py
+
+### 📚 Documentation
+
+- **README badges** - CI, GitHub release, PyPI version, Python version, license
+- **pyproject.toml** - Enhanced classifiers and project URLs (Documentation, Bug Tracker, Changelog)
+
+### ✅ Tests
+
+- Added comprehensive tests for nsenter functionality
+- Added stdin write/read tests
+- Improved test coverage to 45 tests
+
 ## [v0.1.1]
 
 📅 Released 2025-03-24

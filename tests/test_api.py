@@ -3,15 +3,18 @@
 import asyncio
 import pytest
 
-from nsjail import NsjailOptions, create_nsjail_process
+from nsjail import (
+    NsjailOptions,
+    create_nsjail_process,
+    create_nsenter_process,
+)
 
 
 @pytest.mark.asyncio
 async def test_start_basic():
     """Test basic start and wait."""
     proc = await create_nsjail_process(
-        command="/bin/echo",
-        args=["hello"],
+        command=["/bin/echo", "hello"],
         options=NsjailOptions(chroot="/"),
     )
     assert proc.pid > 0
@@ -23,7 +26,7 @@ async def test_start_basic():
 async def test_start_with_options():
     """Test start with NsjailOptions."""
     proc = await create_nsjail_process(
-        command="/bin/true",
+        command=["/bin/true"],
         options=NsjailOptions(chroot="/"),
     )
     assert proc.pid > 0
@@ -35,8 +38,7 @@ async def test_start_with_options():
 async def test_stream_output():
     """Test streaming stdout with chroot."""
     proc = await create_nsjail_process(
-        command="/bin/echo",
-        args=["hello world"],
+        command=["/bin/echo", "hello world"],
         options=NsjailOptions(chroot="/"),
     )
     chunks = []
@@ -52,19 +54,10 @@ async def test_stream_output():
 
 
 @pytest.mark.asyncio
-async def test_auto_print():
-    """Test tee parameter (auto-print output)."""
-    proc = await create_nsjail_process(command="/bin/echo", args=["test"], tee=True)
-    await proc.wait()
-    # Should have printed, we just check it doesn't crash
-
-
-@pytest.mark.asyncio
 async def test_context_manager():
     """Test async context manager."""
     async with await create_nsjail_process(
-        command="/bin/sleep",
-        args=["0.1"],
+        command=["/bin/sleep", "0.1"],
         options=NsjailOptions(chroot="/"),
     ) as proc:
         assert proc.pid > 0
@@ -76,8 +69,7 @@ async def test_context_manager():
 async def test_terminate():
     """Test terminate method."""
     proc = await create_nsjail_process(
-        command="/bin/sleep",
-        args=["3600"],
+        command=["/bin/sleep", "3600"],
         options=NsjailOptions(chroot="/"),
     )
     assert proc.is_running()
@@ -173,7 +165,7 @@ def test_options_tmpfsmount():
 async def test_command_not_found():
     """Test command that doesn't exist."""
     proc = await create_nsjail_process(
-        command="/bin/nonexistent_command_xyz123",
+        command=["/bin/nonexistent_command_xyz123"],
         options=NsjailOptions(chroot="/"),
     )
     ret = await proc.wait()
@@ -185,22 +177,11 @@ async def test_command_not_found():
 async def test_command_non_zero_exit():
     """Test command that exits with non-zero code."""
     proc = await create_nsjail_process(
-        command="/bin/sh",
-        args=["-c", "exit 42"],
+        command=["/bin/sh", "-c", "exit 42"],
         options=NsjailOptions(chroot="/"),
     )
     ret = await proc.wait()
     assert ret == 42
-
-
-@pytest.mark.asyncio
-async def test_options_invalid_type():
-    """Test that invalid options type raises TypeError."""
-    with pytest.raises(TypeError, match="options must be NsjailOptions"):
-        await create_nsjail_process(  # type: ignore
-            command="/bin/echo",
-            options="invalid",
-        )
 
 
 # ===== Ring Buffer Tests =====
@@ -208,13 +189,20 @@ async def test_options_invalid_type():
 
 @pytest.mark.asyncio
 async def test_ring_buffer_discard_oldest():
-    """Test that ring buffer discards oldest when full."""
-    # Use very small buffer size
+    """Test that ring buffer discards oldest when full.
+
+    Verifies the ring buffer behavior: when queue is full, oldest items
+    are discarded to make room for new data.
+    """
+    # Small buffer to trigger overflow
     proc = await create_nsjail_process(
-        command="/bin/sh",
-        args=["-c", "for i in $(seq 1 100); do echo $i; done"],
+        command=[
+            "/bin/sh",
+            "-c",
+            "i=0; while [ $i -lt 100 ]; do echo $i; i=$((i+1)); done",
+        ],
         options=NsjailOptions(chroot="/"),
-        buffer_size=4,  # Very small queue
+        buffer_size=2,
     )
 
     chunks = []
@@ -222,9 +210,92 @@ async def test_ring_buffer_discard_oldest():
         if source == "stdout":
             chunks.append(chunk)
 
-    # Should not have all 100 lines due to ring buffer overflow
-    # But should have some output
+    # With ring buffer, we should get data but some may be lost
     assert len(chunks) > 0
+    # The exact number depends on timing, but should be significantly
+    # less than 100 due to buffer_size=2
+    # (Note: this is a soft assertion as timing can vary)
+
+
+@pytest.mark.asyncio
+async def test_queue_full_with_eof():
+    """Test that EOF marker is delivered even when queue is full.
+
+    This ensures the fix for the deadlock scenario where EOF put() would
+    block if the queue was full.
+    """
+    # Use very small buffer size
+    proc = await create_nsjail_process(
+        command=["/bin/sh", "-c", "for i in $(seq 1 50); do echo line $i; done"],
+        options=NsjailOptions(chroot="/"),
+        buffer_size=2,  # Very small queue
+    )
+
+    # Stream should complete without deadlock
+    chunks = []
+    async for source, chunk in proc.stream():
+        if source == "stdout":
+            chunks.append(chunk)
+
+    # Should receive some data and exit cleanly
+    assert len(chunks) > 0
+
+    # Wait for process to finish
+    await proc.wait()
+    # Process should exit cleanly (not hang due to EOF blocking)
+    assert proc.returncode == 0
+
+
+@pytest.mark.asyncio
+async def test_eof_when_queue_full():
+    """Test that EOF marker is delivered even when queue is completely full.
+
+    This test specifically targets the QueueFull exception handling path in
+    _internal_read where we discard the oldest item to make room for EOF.
+    """
+    # Use extremely small buffer and slow consumption to ensure queue stays full
+    proc = await create_nsjail_process(
+        command=["/bin/sh", "-c", "for i in $(seq 1 20); do echo $i; sleep 0.01; done"],
+        options=NsjailOptions(chroot="/"),
+        buffer_size=1,  # Single slot queue - easier to keep full
+    )
+
+    # Don't consume immediately, let output accumulate
+    await asyncio.sleep(0.1)
+
+    # Now start consuming - queue should have been full at some point
+    chunks = []
+    async for source, chunk in proc.stream():
+        if source == "stdout":
+            chunks.append(chunk)
+        # Only consume first few items to let queue fill again
+        if len(chunks) >= 3:
+            break
+
+    # Continue waiting for process to complete
+    await proc.wait()
+    assert proc.returncode == 0
+
+
+@pytest.mark.asyncio
+async def test_aclose_after_process_naturally_ends():
+    """Test aclose() when process has already ended naturally.
+
+    This covers the _wait_readers branch where tasks are already done
+    (no cancellation needed).
+    """
+    proc = await create_nsjail_process(
+        command=["/bin/echo", "hello"],
+        options=NsjailOptions(chroot="/"),
+    )
+
+    # Wait for process to finish naturally
+    await proc.wait()
+    assert proc.returncode == 0
+
+    # Now call aclose - should handle gracefully (tasks already done)
+    await proc.aclose()
+    assert not proc.is_running()
 
 
 # ===== aclose() Timeout Tests =====
@@ -234,8 +305,8 @@ async def test_ring_buffer_discard_oldest():
 async def test_aclose_timeout_fallback_to_kill():
     """Test that aclose() falls back to kill() after timeout."""
     proc = await create_nsjail_process(
-        command="/bin/sh",
-        args=[
+        command=[
+            "/bin/sh",
             "-c",
             "trap 'echo SIGTERM; sleep 1000' TERM; while true; do sleep 1; done",
         ],
@@ -261,11 +332,11 @@ async def test_concurrent_processes():
 
     async def run_echo(num: int) -> int:
         proc = await create_nsjail_process(
-            command="/bin/echo",
-            args=[f"process_{num}"],
+            command=["/bin/echo", f"process_{num}"],
             options=NsjailOptions(chroot="/"),
         )
         await proc.wait()
+        assert proc.returncode is not None
         return proc.returncode
 
     # Run 10 processes concurrently
@@ -280,8 +351,7 @@ async def test_concurrent_processes():
 async def test_time_limit():
     """Test that time_limit actually kills the process."""
     proc = await create_nsjail_process(
-        command="/bin/sh",
-        args=["-c", "sleep 1000"],
+        command=["/bin/sh", "-c", "sleep 1000"],
         options=NsjailOptions(chroot="/", time_limit=1),
     )
     ret = await proc.wait()
@@ -293,8 +363,8 @@ async def test_time_limit():
 async def test_memory_limit():
     """Test that memory_limit works."""
     proc = await create_nsjail_process(
-        command="/bin/sh",
-        args=[
+        command=[
+            "/bin/sh",
             "-c",
             "dd if=/dev/zero of=/dev/shm/big bs=1M count=200 2>/dev/null; echo OK",
         ],
@@ -313,8 +383,7 @@ async def test_memory_limit():
 async def test_stream_stderr_only():
     """Test streaming when only stderr has output."""
     proc = await create_nsjail_process(
-        command="/bin/sh",
-        args=["-c", "echo error >&2"],
+        command=["/bin/sh", "-c", "echo error >&2"],
         options=NsjailOptions(chroot="/"),
     )
 
@@ -330,7 +399,7 @@ async def test_stream_stderr_only():
 async def test_stream_empty_output():
     """Test streaming when command produces no output."""
     proc = await create_nsjail_process(
-        command="/bin/true",
+        command=["/bin/true"],
         options=NsjailOptions(chroot="/"),
     )
 
@@ -347,13 +416,16 @@ async def test_stream_empty_output():
 async def test_stream_during_aclose():
     """Test that stream() exits cleanly when aclose() is called concurrently."""
     proc = await create_nsjail_process(
-        command="/bin/sh",
-        args=["-c", "while true; do echo x; sleep 0.01; done"],
+        command=["/bin/sh", "-c", "while true; do echo x; sleep 0.01; done"],
         options=NsjailOptions(chroot="/"),
     )
 
     # Start streaming in background
-    stream_task = asyncio.create_task(proc.stream().__anext__())
+    async def get_first():
+        async for _ in proc.stream():
+            break
+
+    stream_task = asyncio.create_task(get_first())
 
     # Give it time to start reading
     await asyncio.sleep(0.05)
@@ -376,8 +448,7 @@ async def test_stream_during_aclose():
 async def test_aclose_with_active_stream():
     """Test aclose() EOF fallback when stream() is consuming."""
     proc = await create_nsjail_process(
-        command="/bin/sleep",
-        args=["3600"],
+        command=["/bin/sleep", "3600"],
         options=NsjailOptions(chroot="/"),
     )
 
@@ -387,11 +458,8 @@ async def test_aclose_with_active_stream():
     async def slow_stream():
         nonlocal stream_started
         stream_started = True
-        count = 0
-        async for source, chunk in proc.stream():
-            count += 1
-            if count >= 1:
-                break  # Get first chunk then stop
+        async for _ in proc.stream():
+            break  # Get first chunk then stop
 
     stream_task = asyncio.create_task(slow_stream())
 
@@ -407,6 +475,33 @@ async def test_aclose_with_active_stream():
     assert not proc.is_running()
 
 
+# ===== Stream Tests =====
+
+
+@pytest.mark.asyncio
+async def test_stream_after_terminated_raises():
+    """Test that stream() raises RuntimeError after all output consumed."""
+    proc = await create_nsjail_process(
+        command=["/bin/echo", "test"],
+        options=NsjailOptions(chroot="/"),
+    )
+
+    # First call - should work and consume all output
+    async for _ in proc.stream():
+        pass
+
+    # Wait for process to finish
+    await proc.wait()
+    assert proc.returncode == 0
+
+    # Second call after all output consumed - should raise
+    with pytest.raises(
+        RuntimeError, match="Cannot stream\\(\\) after all output has been consumed"
+    ):
+        async for _ in proc.stream():
+            pass
+
+
 # ===== Kill Tests =====
 
 
@@ -414,8 +509,7 @@ async def test_aclose_with_active_stream():
 async def test_kill():
     """Test kill method."""
     proc = await create_nsjail_process(
-        command="/bin/sleep",
-        args=["3600"],
+        command=["/bin/sleep", "3600"],
         options=NsjailOptions(chroot="/"),
     )
     assert proc.is_running()
@@ -423,7 +517,131 @@ async def test_kill():
     await proc.wait()
     assert not proc.is_running()
     # Killed by SIGKILL (exit code 137 usually, or 9)
+    assert proc.returncode is not None
     assert proc.returncode < 0
+
+
+@pytest.mark.asyncio
+async def test_kill_already_dead():
+    """Test kill() on already dead process."""
+    proc = await create_nsjail_process(command=["/bin/true"])
+    await proc.wait()  # Wait for process to finish
+    # Process is dead, kill() should warn but not raise
+    with pytest.warns(RuntimeWarning, match="already dead"):
+        proc.kill()
+
+
+@pytest.mark.asyncio
+async def test_terminate_already_dead():
+    """Test terminate() on already dead process."""
+    proc = await create_nsjail_process(command=["/bin/true"])
+    await proc.wait()  # Wait for process to finish
+    # Process is dead, terminate() should warn but not raise
+    with pytest.warns(RuntimeWarning, match="already terminated"):
+        proc.terminate()
+
+
+# ===== Stdin Write Tests =====
+
+
+@pytest.mark.asyncio
+async def test_write_stdin():
+    """Test writing to stdin."""
+    proc = await create_nsjail_process(
+        command=["/bin/cat"],
+        options=NsjailOptions(chroot="/"),
+        writable_stdin=True,
+    )
+
+    # Write data and get echo back
+    await proc.write(b"hello world\n")
+    # Close stdin to signal EOF to cat
+    if proc._proc.stdin:
+        proc._proc.stdin.close()
+
+    output = []
+    async for source, chunk in proc.stream():
+        if source == "stdout":
+            output.append(chunk)
+
+    result = b"".join(output).decode()
+    assert "hello world" in result
+    await proc.wait()
+
+
+@pytest.mark.asyncio
+async def test_write_nowait_stdin():
+    """Test write_nowait() for non-blocking stdin write."""
+    proc = await create_nsjail_process(
+        command=["/bin/cat"],
+        options=NsjailOptions(chroot="/"),
+        writable_stdin=True,
+    )
+
+    # Write without waiting
+    proc.write_nowait(b"test data\n")
+    if proc._proc.stdin:
+        proc._proc.stdin.close()
+
+    output = []
+    async for source, chunk in proc.stream():
+        if source == "stdout":
+            output.append(chunk)
+
+    result = b"".join(output).decode()
+    assert "test data" in result
+    await proc.wait()
+
+
+@pytest.mark.asyncio
+async def test_write_without_stdin_raises():
+    """Test that write() raises when stdin is not connected."""
+    proc = await create_nsjail_process(
+        command=["/bin/echo", "test"],
+        options=NsjailOptions(chroot="/"),
+        writable_stdin=False,  # Explicitly disable
+    )
+
+    with pytest.raises(RuntimeError, match="stdin is not connected"):
+        await proc.write(b"should fail\n")
+
+    await proc.wait()
+
+
+@pytest.mark.asyncio
+async def test_nsenter_write_stdin():
+    """Test writing to nsenter process stdin."""
+    # First, create a long-running nsjail process
+    jail_proc = await create_nsjail_process(
+        command=["/bin/sleep", "10"],
+        options=NsjailOptions(chroot="/"),
+    )
+
+    try:
+        # Use nsenter to run cat inside the jail
+        nsenter_proc = await create_nsenter_process(
+            target_pid=jail_proc.pid,
+            namespaces=["mnt", "pid", "uts"],
+            command=["/bin/cat"],
+            writable_stdin=True,
+        )
+
+        # Write to cat via nsenter
+        await nsenter_proc.write(b"via nsenter\n")
+        if nsenter_proc._proc.stdin:
+            nsenter_proc._proc.stdin.close()
+
+        output = []
+        async for source, chunk in nsenter_proc.stream():
+            if source == "stdout":
+                output.append(chunk)
+
+        result = b"".join(output).decode()
+        assert "via nsenter" in result
+        await nsenter_proc.wait()
+    finally:
+        jail_proc.kill()
+        await jail_proc.wait()
 
 
 # ===== Config File Tests =====
@@ -475,3 +693,101 @@ def test_console_script():
     if result:
         assert result.is_absolute()
         assert result.name == "nsjail"
+
+
+# ===== nsenter Tests =====
+
+
+@pytest.mark.asyncio
+async def test_nsenter_process_attributes():
+    """Test NsenterProcess attributes."""
+    from nsjail import create_nsenter_process
+
+    # Create a target process
+    sleep_proc = await asyncio.create_subprocess_exec("sleep", "10")
+
+    try:
+        proc = await create_nsenter_process(
+            target_pid=sleep_proc.pid,
+            namespaces=["net", "mnt"],
+            command=["echo", "test"],
+        )
+
+        # Check attributes
+        assert proc.target_pid == sleep_proc.pid
+        assert proc.namespaces == ["net", "mnt"]
+        assert proc.pid > 0
+
+        # Clean up
+        proc.kill()
+        await proc.wait()
+    finally:
+        sleep_proc.kill()
+        await sleep_proc.wait()
+
+
+@pytest.mark.asyncio
+async def test_nsenter_stream_works():
+    """Test that stream() works with nsenter processes."""
+    from nsjail import create_nsenter_process
+
+    sleep_proc = await asyncio.create_subprocess_exec("sleep", "10")
+
+    try:
+        proc = await create_nsenter_process(
+            target_pid=sleep_proc.pid,
+            namespaces=["net"],
+            command=["echo", "hello from nsenter"],
+        )
+
+        chunks = []
+        async for source, chunk in proc.stream():
+            if source == "stdout":
+                chunks.append(chunk)
+
+        await proc.wait()
+        assert proc.returncode == 0
+        assert len(chunks) > 0
+    finally:
+        sleep_proc.kill()
+        await sleep_proc.wait()
+
+
+@pytest.mark.asyncio
+async def test_nsenter_invalid_namespace_type():
+    """Test that invalid namespace type raises ValueError."""
+    from nsjail import create_nsenter_process
+
+    sleep_proc = await asyncio.create_subprocess_exec("sleep", "10")
+
+    try:
+        with pytest.raises(ValueError, match="Unknown namespace type"):
+            await create_nsenter_process(
+                target_pid=sleep_proc.pid,
+                namespaces=["invalid_namespace"],
+                command=["echo", "test"],
+            )
+    finally:
+        sleep_proc.kill()
+        await sleep_proc.wait()
+
+
+@pytest.mark.asyncio
+async def test_nsenter_options_build_args():
+    """Test NsenterOptions.build_args()."""
+    from nsjail import NsenterOptions
+
+    options = NsenterOptions(
+        wd="/tmp",
+        user="nobody",
+        env={"TEST": "value"},
+    )
+
+    args = list(options.build_args())
+
+    assert "--wd" in args
+    assert "/tmp" in args
+    assert "--user" in args
+    assert "nobody" in args
+    assert "--env" in args
+    assert "TEST=value" in args

@@ -2,6 +2,14 @@
 
 > Prebuilt [nsjail](https://github.com/google/nsjail) executables packaged as Python wheels
 
+[![CI](https://github.com/tanbro/python-nsjail/actions/workflows/build-wheels.yml/badge.svg)](https://github.com/tanbro/python-nsjail/actions/workflows/build-wheels.yml)
+[![GitHub release](https://img.shields.io/github/v/tag/tanbro/python-nsjail)](https://github.com/tanbro/python-nsjail/releases)
+[![PyPI version](https://badge.fury.io/py/nsjail.svg)](https://pypi.org/project/nsjail/)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/nsjail)](https://pypi.org/project/nsjail/)
+[![PyPI - Implementation](https://img.shields.io/pypi/implementation/nsjail)](https://pypi.org/project/nsjail/)
+[![PyPI - Status](https://img.shields.io/pypi/status/nsjail)](https://pypi.org/project/nsjail/)
+[![PyPI - License](https://img.shields.io/pypi/l/nsjail)](https://pypi.org/project/nsjail/)
+
 ## Overview
 
 **Just install and use** — no compilation required. `python-nsjail` provides prebuilt nsjail binaries as Python wheels, making the powerful Linux namespace sandbox immediately available.
@@ -126,21 +134,19 @@ export NSJAIL=$XDG_DATA_HOME/nsjail/bin/nsjail
 
 ```python
 import asyncio
-from nsjail import NsjailOptions, NsjailProcess, create_nsjail_process
+from nsjail import create_nsjail_process, create_nsenter_process, NsjailOptions
 
 async def main():
     # Basic usage
     proc = await create_nsjail_process(
-        command="/bin/echo",
-        args=["hello"],
+        command=["/bin/echo", "hello"],
         options=NsjailOptions(chroot="/"),
     )
     await proc.wait()
 
     # Stream output
     proc = await create_nsjail_process(
-        command="/bin/cat",
-        args=["/etc/hostname"],
+        command=["/bin/cat", "/etc/hostname"],
         options=NsjailOptions(
             chroot="/",
             user="nobody",
@@ -150,6 +156,22 @@ async def main():
     async for source, chunk in proc.stream():
         if source == "stdout":
             print(chunk.decode())
+
+    # Interactive stdin (with writable_stdin=True)
+    proc = await create_nsjail_process(
+        command=["/bin/cat"],
+        options=NsjailOptions(chroot="/"),
+        writable_stdin=True,
+    )
+    await proc.write(b"hello world\n")
+    # ... read output via stream()
+
+    # Use nsenter to enter existing container namespace
+    nsenter_proc = await create_nsenter_process(
+        target_pid=1234,
+        namespaces=["net", "mnt"],
+        command=["ip", "addr"],
+    )
 
 asyncio.run(main())
 ```

@@ -31,11 +31,11 @@ __all__ = [
     "NsenterProcess",
     "create_nsjail_process",
     "create_nsenter_process",
-    "StreamSource",
+    "StreamType",
     "NamespaceType",
 ]
 
-StreamSource = Literal["stdout", "stderr"]
+StreamType = Literal["stdout", "stderr"]
 NamespaceType = Literal["net", "mnt", "ipc", "uts", "pid", "user", "cgroup"]
 
 # nsenter namespace flags
@@ -85,14 +85,14 @@ class ManagedProcess:
         self._tee = tee
 
         self._streaming = False
-        self._eof_received: set[StreamSource] = set()
+        self._eof_received: set[StreamType] = set()
 
         # Reader tasks (started by factory function)
         self._read_stdout_task: asyncio.Task[None] | None = None
         self._read_stderr_task: asyncio.Task[None] | None = None
 
         # Create queue immediately (bounded for backpressure)
-        self._queue: asyncio.Queue[tuple[StreamSource, bytes]] = asyncio.Queue(
+        self._queue: asyncio.Queue[tuple[StreamType, bytes]] = asyncio.Queue(
             maxsize=buffer_size
         )
 
@@ -190,7 +190,7 @@ class ManagedProcess:
 
     # ===== Output handling =====
 
-    async def stream(self) -> AsyncIterator[tuple[StreamSource, bytes]]:
+    async def stream(self) -> AsyncIterator[tuple[StreamType, bytes]]:
         """Stream stdout/stderr with preserved ordering.
 
         Yields:
@@ -219,7 +219,7 @@ class ManagedProcess:
         self._read_stdout_task = asyncio.create_task(self._internal_read("stdout"))
         self._read_stderr_task = asyncio.create_task(self._internal_read("stderr"))
 
-    async def _internal_read(self, source: StreamSource) -> None:
+    async def _internal_read(self, source: StreamType) -> None:
         """Read stdout or stderr stream.
 
         Data flow:
@@ -280,7 +280,8 @@ class ManagedProcess:
 
 
 # ==================== Subclasses ====================
-NsjailProcess = ManagedProcess
+class NsjailProcess(ManagedProcess):
+    pass
 
 
 class NsenterProcess(ManagedProcess):
@@ -400,6 +401,7 @@ async def create_nsenter_process(
     target_pid: int,
     namespaces: list[NamespaceType],
     command: list[str],
+    options: object | None = None,
     buffer_size: int = 100,
     chunk_size: int = 1024,
     tee: bool = False,
@@ -413,6 +415,7 @@ async def create_nsenter_process(
         target_pid: PID of the target process whose namespace to enter
         namespaces: List of namespace types to enter (net, mnt, ipc, uts, pid, user, cgroup)
         command: Command and arguments to execute inside the namespace
+        options: NsenterOptions instance
         buffer_size: Queue size for stream read (max items)
         chunk_size: Read chunk size in bytes
         tee: If True, forward output to console while still capturing for stream()
@@ -434,6 +437,9 @@ async def create_nsenter_process(
     # Check nsenter availability
     nsenter.check_nsenter()
 
+    # Import NsenterOptions
+    from .options import NsenterOptions
+
     # Build nsenter command
     cmd = ["nsenter", "-t", str(target_pid)]
     for ns in namespaces:
@@ -441,6 +447,14 @@ async def create_nsenter_process(
         if flag is None:
             raise ValueError(f"Unknown namespace type: {ns}")
         cmd.append(flag)
+
+    # Add options
+    if options is not None:
+        if isinstance(options, NsenterOptions):
+            cmd.extend(options.build_args())
+        else:
+            raise TypeError(f"options must be NsenterOptions, not {type(options)}")
+
     cmd.extend(["--"] + command)
 
     # Start subprocess

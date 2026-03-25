@@ -1,4 +1,4 @@
-"""nsjail command line options."""
+"""nsjail and nsenter command line options."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from collections.abc import Mapping, Sequence, Iterable
 
 
-__all__ = ["NsjailOptions"]
+__all__ = ["NsjailOptions", "NsenterOptions"]
 
 
 @dataclass
@@ -114,5 +114,66 @@ class NsjailOptions:
             args.append("--disable_clone_newuser")
         if self.disable_clone_newpid:
             args.append("--disable_clone_newpid")
+
+        return args
+
+
+@dataclass
+class NsenterOptions:
+    """nsenter command line options.
+
+    nsenter is used to enter the namespaces of a target process and execute
+    a command. These options control how the namespaces are entered.
+    """
+
+    # Working directory
+    wd: str | None = None  # --wd PATH
+
+    # Root filesystem
+    root: str | None = None  # --root DIR
+
+    # User/Group
+    user: str | None = None  # --user USER
+    group: str | None = None  # --group GROUP
+
+    # Credentials
+    preserve_credentials: bool = False  # --preserve-credentials
+
+    # Environment
+    env: Mapping[str, str] | None = None  # --env K=V
+
+    def build_args(self) -> Iterable[str]:
+        """Build nsenter command line argument list.
+
+        Rules:
+        - None values don't generate arguments
+        - Empty containers ({}, []) don't generate arguments
+        - Other values (including "", 0, False) generate corresponding arguments
+        - Uses long format for all options
+        """
+        args: list[str] = []
+
+        # Working directory
+        if self.wd is not None:
+            args.extend(["--wd", self.wd])
+
+        # Root filesystem
+        if self.root is not None:
+            args.extend(["--root", self.root])
+
+        # User/Group
+        if self.user is not None:
+            args.extend(["--user", self.user])
+        if self.group is not None:
+            args.extend(["--group", self.group])
+
+        # Credentials
+        if self.preserve_credentials:
+            args.append("--preserve-credentials")
+
+        # Environment
+        if self.env:
+            for k, v in self.env.items():
+                args.extend(["--env", f"{k}={v}"])
 
         return args

@@ -45,6 +45,7 @@ async def create_nsenter_process(
     target_pid: int,
     namespaces: list["NamespaceType"],
     command: list[str],
+    options: object | None = None,
     buffer_size: int = 100,
     chunk_size: int = 1024,
     tee: bool = False,
@@ -57,6 +58,7 @@ async def create_nsenter_process(
         target_pid: 目标进程的 PID
         namespaces: 要进入的命名空间类型列表 (net, mnt, ipc, uts, pid, user, cgroup)
         command: 在命名空间中执行的命令和参数
+        options: NsenterOptions 实例
         buffer_size: stream() 的队列大小（最大项目数）
         chunk_size: 读取块大小（字节）
         tee: 如果为 True，在捕获输出的同时转发到控制台
@@ -81,6 +83,7 @@ async def create_nsenter_process(
         target_pid=target_pid,
         namespaces=namespaces,
         command=command,
+        options=options,
         buffer_size=buffer_size,
         chunk_size=chunk_size,
         tee=tee,

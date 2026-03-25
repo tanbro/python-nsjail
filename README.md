@@ -2,17 +2,17 @@
 
 > Prebuilt [nsjail](https://github.com/google/nsjail) executables packaged as Python wheels
 
-[![CI](https://github.com/tanbro/python-nsjail/actions/workflows/build-wheels.yml/badge.svg)](https://github.com/tanbro/python-nsjail/actions/workflows/build-wheels.yml)
+[![CI](https://github.com/tanbro/python-nsjail/actions/workflows/build-and-publish.yml/badge.svg)](https://github.com/tanbro/python-nsjail/actions/workflows/build-and-publish.yml)
 [![GitHub release](https://img.shields.io/github/v/tag/tanbro/python-nsjail)](https://github.com/tanbro/python-nsjail/releases)
-[![PyPI version](https://badge.fury.io/py/nsjail.svg)](https://pypi.org/project/nsjail/)
-[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/nsjail)](https://pypi.org/project/nsjail/)
-[![PyPI - Implementation](https://img.shields.io/pypi/implementation/nsjail)](https://pypi.org/project/nsjail/)
-[![PyPI - Status](https://img.shields.io/pypi/status/nsjail)](https://pypi.org/project/nsjail/)
-[![PyPI - License](https://img.shields.io/pypi/l/nsjail)](https://pypi.org/project/nsjail/)
+[![PyPI version](https://badge.fury.io/py/python-nsjail.svg)](https://pypi.org/project/python-nsjail/)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/python-nsjail)](https://pypi.org/project/python-nsjail/)
+[![PyPI - Implementation](https://img.shields.io/pypi/implementation/python-nsjail)](https://pypi.org/project/python-nsjail/)
+[![PyPI - Status](https://img.shields.io/pypi/status/python-nsjail)](https://pypi.org/project/python-nsjail/)
+[![PyPI - License](https://img.shields.io/pypi/l/python-nsjail)](https://pypi.org/project/python-nsjail/)
 
 ## Overview
 
-**Just install and use** — no compilation required. `python-nsjail` provides prebuilt nsjail binaries as Python wheels, making the powerful Linux namespace sandbox immediately available.
+**Just install and use** — no compilation required. `python-nsjail` provides prebuilt [nsjail][] binaries as Python wheels, making the powerful Linux namespace sandbox immediately available.
 
 ## System Requirements
 
@@ -184,3 +184,5 @@ For development or building from source, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 - **nsjail**: Apache-2.0 (see [google/nsjail](https://github.com/google/nsjail))
 - **python-nsjail packaging**: Apache-2.0
+
+[nsjail]: https://github.com/google/nsjail "A lightweight process isolation tool that utilizes Linux namespaces, cgroups, rlimits and seccomp-bpf syscall filters, leveraging the Kafel BPF language for enhanced security."

@@ -2,6 +2,14 @@
 
 > Prebuilt [nsjail](https://github.com/google/nsjail) executables packaged as Python wheels
 
+[![CI](https://github.com/tanbro/python-nsjail/actions/workflows/build-wheels.yml/badge.svg)](https://github.com/tanbro/python-nsjail/actions/workflows/build-wheels.yml)
+[![GitHub release](https://img.shields.io/github/v/tag/tanbro/python-nsjail)](https://github.com/tanbro/python-nsjail/releases)
+[![PyPI version](https://badge.fury.io/py/nsjail.svg)](https://pypi.org/project/nsjail/)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/nsjail)](https://pypi.org/project/nsjail/)
+[![PyPI - Implementation](https://img.shields.io/pypi/implementation/nsjail)](https://pypi.org/project/nsjail/)
+[![PyPI - Status](https://img.shields.io/pypi/status/nsjail)](https://pypi.org/project/nsjail/)
+[![PyPI - License](https://img.shields.io/pypi/l/nsjail)](https://pypi.org/project/nsjail/)
+
 ## Overview
 
 **Just install and use** — no compilation required. `python-nsjail` provides prebuilt nsjail binaries as Python wheels, making the powerful Linux namespace sandbox immediately available.

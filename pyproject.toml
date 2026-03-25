@@ -27,12 +27,30 @@ keywords = [
 ]
 
 classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: Apache Software License",
   "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Programming Language :: Python :: Implementation :: PyPy",
+  "Topic :: Security",
+  "Topic :: System :: Systems Administration",
+  "Topic :: Software Development :: Testing",
 ]
 
 [project.urls]
 Homepage = "https://github.com/tanbro/python-nsjail"
 Repository = "https://github.com/tanbro/python-nsjail"
+Documentation = "https://github.com/tanbro/python-nsjail/blob/main/README.md"
+"Bug Tracker" = "https://github.com/tanbro/python-nsjail/issues"
+Changelog = "https://github.com/tanbro/python-nsjail/releases"
 
 [project.scripts]
 nsjail = "nsjail.__main__:main"

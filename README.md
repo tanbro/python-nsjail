@@ -106,7 +106,18 @@ nsjail_path = bundled_binary()
 print(nsjail_path)  # /absolute/path/to/nsjail
 ```
 
-Or use `locate_nsjail()` which respects the `NSJAIL` environment variable:
+Or use `locate_nsjail()` which respects the `NSJAIL` environment variable and checks system paths:
+
+```python
+from nsjail import locate_nsjail
+
+nsjail_path = locate_nsjail()  # Returns path with priority: env var > system > bundled
+```
+
+Priority:
+1. `NSJAIL` environment variable (if set)
+2. System paths: `/usr/local/bin`, `/usr/bin`
+3. Bundled binary (fallback)
 
 ```python
 from nsjail import locate_nsjail

@@ -53,8 +53,8 @@ def locate_nsjail() -> Path:
 
     Priority:
     1. NSJAIL environment variable (supports ~ and $VAR expansion)
-    2. Bundled binary (always preferred, known version)
-    3. System nsjail from PATH
+    2. System nsjail from common locations (/usr/local/bin, /usr/bin)
+    3. Bundled binary (fallback)
 
     Returns:
         Path to nsjail binary.
@@ -68,14 +68,16 @@ def locate_nsjail() -> Path:
         expanded = os.path.expandvars(os.path.expanduser(env_path))
         return Path(expanded).resolve()
 
-    # Try bundled binary
+    # Check common system paths
+    for path in ("/usr/local/bin", "/usr/bin"):
+        nsjail_path = Path(path) / "nsjail"
+        if nsjail_path.is_file():
+            return nsjail_path.resolve()
+
+    # Try bundled binary as fallback
     try:
         return bundled_binary()
     except FileNotFoundError as e:
         warnings.warn(str(e), ResourceWarning)
-
-    # Check system PATH
-    if which_ := which_nsjail():
-        return Path(which_)
 
     raise RuntimeError("nsjail binary not found")

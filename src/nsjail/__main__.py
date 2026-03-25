@@ -1,6 +1,7 @@
 import os
 import sys
-from pathlib import Path
+
+from .locator import bundled_binary
 
 
 def main() -> None:
@@ -10,8 +11,7 @@ def main() -> None:
     with the nsjail binary, preserving the PID.
     """
     # Find the nsjail binary relative to this module
-    here = Path(__file__).parent.resolve()
-    nsjail_bin = here / "nsjail"
+    nsjail_bin = bundled_binary()
 
     if not nsjail_bin.exists():
         print(f"Error: nsjail binary not found at {nsjail_bin}", file=sys.stderr)

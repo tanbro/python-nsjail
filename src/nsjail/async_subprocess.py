@@ -9,7 +9,7 @@ from __future__ import annotations
 import asyncio
 import shutil
 from collections.abc import AsyncIterator, Iterable, Sequence
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from _typeshed import StrPath
@@ -17,15 +17,9 @@ if TYPE_CHECKING:
 from .locator import locate_nsjail
 from .options import NsenterOptions, NsjailOptions
 from .subprocess import NamespaceType, build_nsenter_args, build_nsjail_args
+from .types import StreamType
 
-__all__ = [
-    "async_create_nsjail",
-    "async_create_nsenter",
-    "merge_streams",
-    "StreamType",
-]
-
-StreamType = Literal["stdout", "stderr"]
+__all__ = ("async_create_nsjail", "async_create_nsenter", "merge_streams")
 
 
 # ==================== Factory Functions ====================

@@ -17,13 +17,13 @@ if TYPE_CHECKING:
 from .locator import locate_nsjail
 from .options import NsenterOptions, NsjailOptions
 
-__all__ = [
+__all__ = (
     "create_nsjail",
     "create_nsenter",
     "build_nsjail_args",
     "build_nsenter_args",
     "NamespaceType",
-]
+)
 
 NamespaceType = Literal["net", "mnt", "ipc", "uts", "pid", "user", "cgroup"]
 

@@ -170,7 +170,7 @@ def test_build_nsenter_args_with_options():
 def test_build_nsenter_args_invalid_namespace():
     """Test build_nsenter_args with invalid namespace."""
     with pytest.raises(ValueError, match="Unknown namespace"):
-        build_nsenter_args(1234, ["invalid_namespace"])
+        build_nsenter_args(1234, ["invalid_namespace"])  # type: ignore[arg-type]
 
 
 # ===== Options Tests (from original) =====

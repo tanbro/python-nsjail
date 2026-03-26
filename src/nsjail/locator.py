@@ -9,7 +9,7 @@ import warnings
 import importlib.resources as resources
 from pathlib import Path
 
-__all__ = ["locate_nsjail", "bundled_binary", "console_script", "which_nsjail"]
+__all__ = ("locate_nsjail", "bundled_nsjail", "which_nsjail", "scripts_nsjail")
 
 
 def which_nsjail() -> str | None:
@@ -21,7 +21,7 @@ def which_nsjail() -> str | None:
     return shutil.which("nsjail")
 
 
-def bundled_binary() -> Path:
+def bundled_nsjail() -> Path:
     """Get path to the bundled nsjail binary in this package.
 
     The binary is installed as package data alongside this module.
@@ -35,7 +35,7 @@ def bundled_binary() -> Path:
     raise FileNotFoundError("Can not find bundled nsjail executable file")
 
 
-def console_script() -> Path | None:
+def scripts_nsjail() -> Path | None:
     """Get path to our installed console script (e.g., venv/bin/nsjail).
 
     Returns:
@@ -76,7 +76,7 @@ def locate_nsjail() -> Path:
 
     # Try bundled binary as fallback
     try:
-        return bundled_binary()
+        return bundled_nsjail()
     except FileNotFoundError as e:
         warnings.warn(str(e), ResourceWarning)
 

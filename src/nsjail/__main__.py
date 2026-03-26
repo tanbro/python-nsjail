@@ -1,7 +1,7 @@
 import os
 import sys
 
-from .locator import bundled_binary
+from .locator import bundled_nsjail
 
 
 def main():
@@ -11,7 +11,7 @@ def main():
     with the nsjail binary, preserving the PID.
     """
     # Find the nsjail binary relative to this module
-    nsjail_bin = bundled_binary()
+    nsjail_bin = bundled_nsjail()
 
     # Replace current process with nsjail (preserves PID)
     # os.execl() replaces the current process image with a new one

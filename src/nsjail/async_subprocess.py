@@ -163,7 +163,7 @@ async def merge_streams(
 
     while streams:
         # Create tasks for each active stream
-        tasks = {
+        tasks: dict[StreamType, asyncio.Task[bytes]] = {
             name: asyncio.create_task(stream.read(chunk_size))
             for name, stream in streams.items()
         }

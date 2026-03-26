@@ -12,7 +12,7 @@ git clone --recursive https://github.com/tanbro/python-nsjail
 cd python-nsjail
 
 # Install with dev dependencies
-uv sync"
+uv sync
 ```
 
 ### Using pip
@@ -80,6 +80,60 @@ pytest
 
 # Or with verbose output
 pytest -v
+
+# Run specific test
+pytest tests/test_api.py::test_sync_basic
+```
+
+## Code Quality
+
+Before submitting changes, run the full pre-commit check:
+
+```bash
+pre-commit run -a --all-files
+```
+
+This includes:
+- **ruff** - linting and formatting
+- **mypy** - static type checking
+- **yaml/toml validation** - config file checks
+
+### Type Safety
+
+This project uses strict type checking with `mypy`. When adding new code:
+
+- Use explicit type annotations for public functions
+- Use `dict[Literal["a", "b"], Type]` pattern for dictionaries with literal key types
+- Avoid `Any` - use specific types or `TypeVar` when needed
+
+### Code Style
+
+- **Imports at module top** - All imports should be at the beginning of modules
+- **Simple functions over classes** - Prefer functions over complex wrapper classes
+- **Explicit over implicit** - Make behavior clear, not hidden
+- **Docstrings** - Use Google-style docstrings for public APIs
+
+## API Design Principles
+
+This project follows these design principles:
+
+1. **Simple functions** - Use `create_foo()` instead of `FooBuilder` classes
+2. **Dual ecosystem** - Support both sync and async APIs
+3. **Transparent** - Pass `*args, **kwargs` through to stdlib
+4. **No magic** - Don't hide important behavior
+
+Example:
+```python
+# Good: simple function with transparent pass-through
+def create_nsjail(command, options=None, *args, **kwargs):
+    return subprocess.Popen(cmd, *args, **kwargs)
+
+# Avoid: complex wrapper with hidden behavior
+class NsjailBuilder:
+    def create(self, mode="async"):
+        if mode == "async":
+            return self._create_async()
+        # ...
 ```
 
 ## Updating nsjail Version
@@ -125,5 +179,81 @@ Repaired wheels are in `wheelhouse/`.
 2. Create a feature branch
 3. Make your changes
 4. Add tests if applicable
-5. Ensure tests pass
+5. Ensure `pre-commit run -a --all-files` passes
 6. Submit a pull request
+
+### Commit Message Format
+
+Use clear, descriptive commit messages:
+
+```
+refactor: brief description
+
+Detailed explanation of what changed and why.
+
+- Changed file or component
+- Added feature or fix
+
+Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
+```
+
+Common prefixes:
+- `feat:` - New feature
+- `fix:` - Bug fix
+- `refactor:` - Code restructuring without behavior change
+- `docs:` - Documentation updates
+- `test:` - Test additions or changes
+
+### Pull Request Checklist
+
+- [ ] Tests added/updated for new functionality
+- [ ] `pre-commit run -a --all-files` passes
+- [ ] Documentation updated (README, docstrings)
+- [ ] Project structure section updated if adding new files
+- [ ] Version bumped if breaking changes
+
+## Project Structure
+
+```
+python-nsjail/
+├── nsjail/                    # git submodule (upstream source)
+├── src/
+│   └── nsjail/                # Python package
+│       ├── __init__.py        # API exports
+│       ├── version.py         # Version info
+│       ├── subprocess.py       # Sync subprocess functions
+│       ├── async_subprocess.py # Async subprocess functions
+│       ├── locator.py         # Binary location utilities
+│       ├── options.py         # NsjailOptions, NsenterOptions
+│       └── bin/               # Created during build
+├── tests/
+│   └── test_api.py            # API tests
+├── CONTRIBUTING.md            # This file
+├── README.md                  # User documentation
+└── pyproject.toml            # Build config
+```
+
+## Project Philosophy
+
+This project follows these design principles:
+
+1. **Simple functions over classes** - Use `create_foo()` instead of builder classes
+2. **Dual ecosystem** - Support both sync and async APIs
+3. **Transparent** - Pass `*args, **kwargs` through to stdlib
+4. **Explicit over implicit** - Make behavior clear
+5. **Early stage project** - Breaking changes acceptable, prefer clean API
+
+### Code Style
+
+- **Imports at module top** - All imports should be at the beginning of modules
+- **Docstrings** - Use Google-style docstrings for public APIs
+- **Type hints** - Required for all public functions
+- **Avoid magic** - Don't hide important behavior
+
+### Version Management
+
+Two versions are tracked separately in `src/nsjail/version.py`:
+- `__version__` - Python package version (semver)
+- `__nsjail_version__` - Bundled nsjail binary version
+
+Update independently when appropriate.

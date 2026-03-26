@@ -16,8 +16,8 @@ if TYPE_CHECKING:
 
 from .locator import locate_nsjail
 from .options import NsenterOptions, NsjailOptions
-from .subprocess import NamespaceType, build_nsenter_args, build_nsjail_args
-from .types import StreamType
+from .subprocess import build_nsenter_args, build_nsjail_args
+from .types import StreamType, NamespaceType
 
 __all__ = ("async_create_nsjail", "async_create_nsenter", "merge_streams")
 
@@ -28,7 +28,7 @@ __all__ = ("async_create_nsjail", "async_create_nsenter", "merge_streams")
 async def async_create_nsjail(
     command: Sequence[str],
     options: NsjailOptions | None = None,
-    config_file: StrPath | None = None,
+    config: StrPath | None = None,
     *args,
     **kwargs,
 ) -> asyncio.subprocess.Process:
@@ -37,7 +37,7 @@ async def async_create_nsjail(
     Args:
         command: Command to execute inside nsjail
         options: NsjailOptions configuration
-        config_file: Path to nsjail config file
+        config: Path to nsjail config file
         *args, **kwargs: Additional arguments passed to asyncio.create_subprocess_exec
 
     Returns:
@@ -49,7 +49,7 @@ async def async_create_nsjail(
         ...     print(line.decode(), end="")
     """
     nsjail_path = locate_nsjail()
-    nsjail_args = build_nsjail_args(options, config_file)
+    nsjail_args = build_nsjail_args(options, config)
 
     return await asyncio.create_subprocess_exec(
         nsjail_path,

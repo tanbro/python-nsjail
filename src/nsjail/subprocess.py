@@ -9,34 +9,16 @@ from __future__ import annotations
 import shutil
 import subprocess
 from collections.abc import Iterable, Sequence
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from _typeshed import StrPath
 
 from .locator import locate_nsjail
 from .options import NsenterOptions, NsjailOptions
+from .types import NamespaceType, NS_FLAGS
 
-__all__ = (
-    "create_nsjail",
-    "create_nsenter",
-    "build_nsjail_args",
-    "build_nsenter_args",
-    "NamespaceType",
-)
-
-NamespaceType = Literal["net", "mnt", "ipc", "uts", "pid", "user", "cgroup"]
-
-# nsenter namespace flags
-_NS_FLAGS = {
-    "net": "-n",
-    "mnt": "-m",
-    "ipc": "-i",
-    "uts": "-u",
-    "pid": "-p",
-    "user": "-U",
-    "cgroup": "-C",
-}
+__all__ = ("create_nsjail", "create_nsenter", "build_nsjail_args", "build_nsenter_args")
 
 
 # ==================== Public Helper Functions ====================
@@ -44,7 +26,7 @@ _NS_FLAGS = {
 
 def build_nsjail_args(
     options: NsjailOptions | None = None,
-    config_file: StrPath | None = None,
+    config: StrPath | None = None,
 ) -> list[str]:
     """Build nsjail command line arguments.
 
@@ -52,7 +34,7 @@ def build_nsjail_args(
 
     Args:
         options: NsjailOptions configuration
-        config_file: Path to nsjail config file
+        config: Path to nsjail config file
 
     Returns:
         List of nsjail command line arguments (without binary path and command)
@@ -63,8 +45,8 @@ def build_nsjail_args(
         ['--chroot', '/']
     """
     args: list[str] = []
-    if config_file is not None:
-        args.extend(["--config", str(config_file)])
+    if config is not None:
+        args.extend(["--config", str(config)])
     if options is not None:
         args.extend(options.build_args())
     return args
@@ -90,15 +72,16 @@ def build_nsenter_args(
     Example:
         >>> args = build_nsenter_args(1234, ["net"])
         >>> print(args)
-        ['-t', '1234', '-n']
+        ['--target', '1234', '-n']
     """
-    args = ["-t", str(target_pid)]
+    args = ["--target", str(target_pid)]
 
     ns_flags = set()
     for ns in namespaces:
-        flag = _NS_FLAGS.get(ns)
-        if flag is None:
-            raise ValueError(f"Unknown namespace type: {ns}")
+        try:
+            flag = NS_FLAGS[ns]
+        except KeyError as exc:
+            raise ValueError(f"Unknown namespace type: {exc}")
         ns_flags.add(flag)
     args.extend(ns_flags)
 
@@ -114,7 +97,7 @@ def build_nsenter_args(
 def create_nsjail(
     command: Sequence[str],
     options: NsjailOptions | None = None,
-    config_file: StrPath | None = None,
+    config: StrPath | None = None,
     *args,
     **kwargs,
 ) -> subprocess.Popen:
@@ -123,7 +106,7 @@ def create_nsjail(
     Args:
         command: Command to execute inside nsjail
         options: NsjailOptions configuration
-        config_file: Path to nsjail config file
+        config: Path to nsjail config file
         *args, **kwargs: Additional arguments passed to subprocess.Popen
 
     Returns:
@@ -134,7 +117,7 @@ def create_nsjail(
         >>> output, _ = proc.communicate()
     """
     nsjail_path = locate_nsjail()
-    nsjail_args = build_nsjail_args(options, config_file)
+    nsjail_args = build_nsjail_args(options, config)
 
     cmd: list[str] = [str(nsjail_path), *nsjail_args, "--", *command]
     return subprocess.Popen(cmd, *args, **kwargs)

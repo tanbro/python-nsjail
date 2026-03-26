@@ -131,7 +131,7 @@ def test_build_nsjail_args_with_config():
     """Test build_nsjail_args with config file."""
     args = build_nsjail_args(
         options=NsjailOptions(chroot="/"),
-        config_file="/path/to/config.cfg",
+        config="/path/to/config.cfg",
     )
     assert "--config" in args
     assert "/path/to/config.cfg" in args

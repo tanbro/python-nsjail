@@ -27,7 +27,7 @@ __all__ = ("create_nsjail", "create_nsenter", "build_nsjail_args", "build_nsente
 def build_nsjail_args(
     options: NsjailOptions | None = None,
     config: StrPath | None = None,
-) -> list[str]:
+) -> Sequence[str]:
     """Build nsjail command line arguments.
 
     For debugging, testing, or manual execution.
@@ -56,7 +56,7 @@ def build_nsenter_args(
     target_pid: int,
     namespaces: Iterable[NamespaceType],
     options: NsenterOptions | None = None,
-) -> list[str]:
+) -> Sequence[str]:
     """Build nsenter command line arguments.
 
     For debugging, testing, or manual execution.
@@ -98,7 +98,6 @@ def create_nsjail(
     command: Sequence[str],
     options: NsjailOptions | None = None,
     config: StrPath | None = None,
-    *args,
     **kwargs,
 ) -> subprocess.Popen:
     """Create nsjail subprocess (synchronous).
@@ -107,7 +106,7 @@ def create_nsjail(
         command: Command to execute inside nsjail
         options: NsjailOptions configuration
         config: Path to nsjail config file
-        *args, **kwargs: Additional arguments passed to subprocess.Popen
+        **kwargs: Additional arguments passed to :class:`subprocess.Popen`
 
     Returns:
         subprocess.Popen instance
@@ -119,8 +118,8 @@ def create_nsjail(
     nsjail_path = locate_nsjail()
     nsjail_args = build_nsjail_args(options, config)
 
-    cmd: list[str] = [str(nsjail_path), *nsjail_args, "--", *command]
-    return subprocess.Popen(cmd, *args, **kwargs)
+    cmd = [str(nsjail_path), *nsjail_args, "--", *command]
+    return subprocess.Popen(cmd, **kwargs)
 
 
 def create_nsenter(
@@ -128,7 +127,6 @@ def create_nsenter(
     namespaces: Iterable[NamespaceType],
     command: Sequence[str],
     options: NsenterOptions | None = None,
-    *args,
     **kwargs,
 ) -> subprocess.Popen:
     """Create nsenter subprocess (synchronous).
@@ -138,7 +136,7 @@ def create_nsenter(
         namespaces: List of namespace types to enter
         command: Command to execute inside the namespace
         options: NsenterOptions configuration
-        *args, **kwargs: Additional arguments passed to subprocess.Popen
+        **kwargs: Additional arguments passed to :class:`subprocess.Popen`
 
     Returns:
         subprocess.Popen instance
@@ -160,5 +158,5 @@ def create_nsenter(
         )
 
     nsenter_args = build_nsenter_args(target_pid, namespaces, options)
-    cmd: list[str] = [nsenter_path, *nsenter_args, "--", *command]
-    return subprocess.Popen(cmd, *args, **kwargs)
+    cmd = [nsenter_path, *nsenter_args, "--", *command]
+    return subprocess.Popen(cmd, **kwargs)

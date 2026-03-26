@@ -29,7 +29,6 @@ async def async_create_nsjail(
     command: Sequence[str],
     options: NsjailOptions | None = None,
     config: StrPath | None = None,
-    *args,
     **kwargs,
 ) -> asyncio.subprocess.Process:
     """Create nsjail subprocess (asynchronous).
@@ -38,7 +37,7 @@ async def async_create_nsjail(
         command: Command to execute inside nsjail
         options: NsjailOptions configuration
         config: Path to nsjail config file
-        *args, **kwargs: Additional arguments passed to asyncio.create_subprocess_exec
+        **kwargs: Additional arguments passed to :func:`asyncio.create_subprocess_exec`
 
     Returns:
         asyncio.subprocess.Process instance
@@ -52,12 +51,7 @@ async def async_create_nsjail(
     nsjail_args = build_nsjail_args(options, config)
 
     return await asyncio.create_subprocess_exec(
-        nsjail_path,
-        *nsjail_args,
-        "--",
-        *command,
-        *args,
-        **kwargs,
+        nsjail_path, *nsjail_args, "--", *command, **kwargs
     )
 
 
@@ -66,7 +60,6 @@ async def async_create_nsenter(
     namespaces: Iterable[NamespaceType],
     command: Sequence[str],
     options: NsenterOptions | None = None,
-    *args,
     **kwargs,
 ) -> asyncio.subprocess.Process:
     """Create nsenter subprocess (asynchronous).
@@ -76,7 +69,7 @@ async def async_create_nsenter(
         namespaces: List of namespace types to enter
         command: Command to execute inside the namespace
         options: NsenterOptions configuration
-        *args, **kwargs: Additional arguments passed to asyncio.create_subprocess_exec
+        **kwargs: Additional arguments passed to :func:`asyncio.create_subprocess_exec`
 
     Returns:
         asyncio.subprocess.Process instance
@@ -102,12 +95,7 @@ async def async_create_nsenter(
 
     nsenter_args = build_nsenter_args(target_pid, namespaces, options)
     return await asyncio.create_subprocess_exec(
-        nsenter_path,
-        *nsenter_args,
-        "--",
-        *command,
-        *args,
-        **kwargs,
+        nsenter_path, *nsenter_args, "--", *command, **kwargs
     )
 
 

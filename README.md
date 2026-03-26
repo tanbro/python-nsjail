@@ -1,6 +1,6 @@
 # python-nsjail
 
-> Prebuilt [nsjail](https://github.com/google/nsjail) executables packaged as Python wheels
+> Prebuilt [nsjail](https://github.com/google/nsjail) executables packaged as Python wheels with a simple Python API
 
 [![CI](https://github.com/tanbro/python-nsjail/actions/workflows/build-and-publish.yml/badge.svg)](https://github.com/tanbro/python-nsjail/actions/workflows/build-and-publish.yml)
 [![GitHub tags](https://img.shields.io/github/v/tag/tanbro/python-nsjail)](https://github.com/tanbro/python-nsjail/tags)
@@ -119,19 +119,163 @@ Priority:
 2. System paths: `/usr/local/bin`, `/usr/bin`
 3. Bundled binary (fallback)
 
-```python
-from nsjail import locate_nsjail
-
-nsjail_path = locate_nsjail()
-```
-
 ## Python API
 
-For programmatic sandboxing, use the async Python API:
+The library provides simple functions for creating nsjail subprocesses. Both synchronous and asynchronous APIs are available.
 
-**Environment Variable** (for Python API only):
+### Basic Usage
 
-`NSJAIL` - Override the nsjail binary path
+**Async API**:
+
+```python
+import asyncio
+import subprocess
+from nsjail import async_create_nsjail, NsjailOptions
+
+async def main():
+    # Basic usage - output to terminal
+    proc = await async_create_nsjail(
+        command=["/bin/echo", "hello"],
+        options=NsjailOptions(chroot="/"),
+    )
+    await proc.wait()
+
+    # Capture output
+    proc = await async_create_nsjail(
+        command=["/bin/cat", "/etc/hostname"],
+        options=NsjailOptions(chroot="/", user="nobody"),
+        stdout=subprocess.PIPE,
+    )
+    output = await proc.stdout.read()
+    print(output.decode())
+
+asyncio.run(main())
+```
+
+**Sync API**:
+
+```python
+import subprocess
+from nsjail import create_nsjail, NsjailOptions
+
+# Capture output synchronously
+proc = create_nsjail(
+    command=["/bin/echo", "hello"],
+    options=NsjailOptions(chroot="/"),
+    stdout=subprocess.PIPE,
+)
+output, _ = proc.communicate()
+print(output.decode())
+```
+
+### Stream Merging
+
+For processes that output to both stdout and stderr, use `merge_streams`:
+
+```python
+import asyncio
+import subprocess
+from nsjail import async_create_nsjail, merge_streams, NsjailOptions
+
+async def main():
+    proc = await async_create_nsjail(
+        command=["/bin/sh", "-c", "echo out; echo err >&2"],
+        options=NsjailOptions(chroot="/"),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+
+    async for source, chunk in merge_streams(proc):
+        if source == "stdout":
+            print(f"stdout: {chunk.decode()}")
+        else:
+            print(f"stderr: {chunk.decode()}", file=sys.stderr)
+
+asyncio.run(main())
+```
+
+### Using nsenter
+
+Enter an existing container's namespace with `async_create_nsenter`:
+
+```python
+import asyncio
+import subprocess
+from nsjail import async_create_nsenter
+
+async def main():
+    # Run 'ip addr' inside container 1234's network namespace
+    proc = await async_create_nsenter(
+        target_pid=1234,
+        namespaces=["net"],
+        command=["ip", "addr"],
+        stdout=subprocess.PIPE,
+    )
+    output = await proc.stdout.read()
+    print(output.decode())
+
+asyncio.run(main())
+```
+
+### Inspect Command Arguments
+
+For debugging or testing, you can build the nsjail arguments without executing:
+
+```python
+from nsjail import build_nsjail_args, NsjailOptions
+
+args = build_nsjail_args(
+    options=NsjailOptions(chroot="/", user="nobody"),
+    config_file="/path/to/config.cfg",
+)
+print("nsjail", *args, "--", "/bin/echo", "hello")
+# Output: nsjail --chroot / --user nobody --config /path/to/config.cfg -- /bin/echo hello
+```
+
+### Passing Additional Arguments
+
+All `*args` and `**kwargs` are passed directly to the underlying subprocess creation functions:
+
+```python
+import subprocess
+from nsjail import async_create_nsjail, NsjailOptions
+
+# Pass cwd, env, and other subprocess.Popen / asyncio.create_subprocess_exec arguments
+proc = await async_create_nsjail(
+    command=["/bin/sh", "-c", "echo $FOO"],
+    options=NsjailOptions(chroot="/"),
+    stdout=subprocess.PIPE,
+    cwd="/tmp",
+    env={"FOO": "value"},
+)
+```
+
+### NsjailOptions
+
+Configure nsjail with `NsjailOptions`:
+
+```python
+from nsjail import NsjailOptions
+
+options = NsjailOptions(
+    chroot="/srv/jail",           # Chroot directory
+    user=65534,                    # Run as user (UID)
+    group=65534,                   # Run as group (GID)
+    hostname="sandbox",            # Set hostname
+    cwd="/tmp",                    # Working directory inside jail
+    env={"HOME": "/tmp"},          # Environment variables
+    bindmount=["/tmp:/tmp"],       # Read-write bind mounts
+    bindmount_ro=["/lib:/lib"],    # Read-only bind mounts
+    tmpfsmount=["/tmp"],           # Temporary filesystem mounts
+    time_limit=60,                 # Wall time limit in seconds
+    memory_limit=512,              # Memory limit in MB
+    # ... see NsjailOptions for all options
+)
+```
+
+### Environment Variable
+
+`NSJAIL` - Override the nsjail binary path (for Python API only)
 
 ```bash
 export NSJAIL=/custom/path/to/nsjail
@@ -143,49 +287,33 @@ export NSJAIL=~/local/bin/nsjail
 export NSJAIL=$XDG_DATA_HOME/nsjail/bin/nsjail
 ```
 
-```python
-import asyncio
-from nsjail import create_nsjail_process, create_nsenter_process, NsjailOptions
+## API Reference
 
-async def main():
-    # Basic usage
-    proc = await create_nsjail_process(
-        command=["/bin/echo", "hello"],
-        options=NsjailOptions(chroot="/"),
-    )
-    await proc.wait()
+### Async Functions
 
-    # Stream output
-    proc = await create_nsjail_process(
-        command=["/bin/cat", "/etc/hostname"],
-        options=NsjailOptions(
-            chroot="/",
-            user="nobody",
-            mounts=[("/etc/hostname", "/etc/hostname", "ro")],
-        ),
-    )
-    async for source, chunk in proc.stream():
-        if source == "stdout":
-            print(chunk.decode())
+- `async_create_nsjail(command, options=None, config_file=None, *args, **kwargs)` - Create async nsjail subprocess
+- `async_create_nsenter(target_pid, namespaces, command, options=None, *args, **kwargs)` - Create async nsenter subprocess
+- `merge_streams(proc, chunk_size=8192, stdout=True, stderr=True)` - Merge stdout/stderr streams
 
-    # Interactive stdin (with writable_stdin=True)
-    proc = await create_nsjail_process(
-        command=["/bin/cat"],
-        options=NsjailOptions(chroot="/"),
-        writable_stdin=True,
-    )
-    await proc.write(b"hello world\n")
-    # ... read output via stream()
+### Sync Functions
 
-    # Use nsenter to enter existing container namespace
-    nsenter_proc = await create_nsenter_process(
-        target_pid=1234,
-        namespaces=["net", "mnt"],
-        command=["ip", "addr"],
-    )
+- `create_nsjail(command, options=None, config_file=None, *args, **kwargs)` - Create sync nsjail subprocess
+- `create_nsenter(target_pid, namespaces, command, options=None, *args, **kwargs)` - Create sync nsenter subprocess
 
-asyncio.run(main())
-```
+### Helper Functions
+
+- `build_nsjail_args(options=None, config_file=None)` - Build nsjail command-line arguments
+- `build_nsenter_args(target_pid, namespaces, options=None)` - Build nsenter command-line arguments
+
+### Classes
+
+- `NsjailOptions` - nsjail configuration options
+- `NsenterOptions` - nsenter configuration options
+
+### Locator Functions
+
+- `locate_nsjail()` - Find nsjail binary (respects NSJAIL env var)
+- `bundled_binary()` - Get bundled nsjail binary path
 
 ## Building from Source
 

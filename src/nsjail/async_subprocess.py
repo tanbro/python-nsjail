@@ -32,16 +32,16 @@ async def async_create_nsjail(
     *args,
     **kwargs,
 ) -> asyncio.subprocess.Process:
-    """创建 nsjail 子进程（异步）
+    """Create nsjail subprocess (asynchronous).
 
     Args:
-        command: 在 nsjail 中执行的命令
-        options: NsjailOptions 配置
-        config_file: nsjail 配置文件路径
-        *args, **kwargs: 传递给 asyncio.create_subprocess_exec 的其他参数
+        command: Command to execute inside nsjail
+        options: NsjailOptions configuration
+        config_file: Path to nsjail config file
+        *args, **kwargs: Additional arguments passed to asyncio.create_subprocess_exec
 
     Returns:
-        asyncio.subprocess.Process 实例
+        asyncio.subprocess.Process instance
 
     Example:
         >>> proc = await async_create_nsjail(["/bin/echo", "hello"], stdout=PIPE)
@@ -69,17 +69,17 @@ async def async_create_nsenter(
     *args,
     **kwargs,
 ) -> asyncio.subprocess.Process:
-    """创建 nsenter 子进程（异步）
+    """Create nsenter subprocess (asynchronous).
 
     Args:
-        target_pid: 目标进程 PID
-        namespaces: 要进入的命名空间列表
-        command: 要在命名空间中执行的命令
-        options: NsenterOptions 配置
-        *args, **kwargs: 传递给 asyncio.create_subprocess_exec 的其他参数
+        target_pid: Target process PID
+        namespaces: List of namespace types to enter
+        command: Command to execute inside the namespace
+        options: NsenterOptions configuration
+        *args, **kwargs: Additional arguments passed to asyncio.create_subprocess_exec
 
     Returns:
-        asyncio.subprocess.Process 实例
+        asyncio.subprocess.Process instance
 
     Raises:
         RuntimeError: If nsenter command is not found
@@ -120,23 +120,24 @@ async def merge_streams(
     stdout: bool = True,
     stderr: bool = True,
 ) -> AsyncIterator[tuple[StreamType, bytes]]:
-    """合并 stdout/stderr 的便利函数
+    """Merge stdout/stderr streams utility function.
 
     Args:
-        proc: asyncio subprocess 实例
-        chunk_size: 每次读取的块大小
-        stdout: 是否读取 stdout
-        stderr: 是否读取 stderr
+        proc: asyncio subprocess instance
+        chunk_size: Number of bytes to read per chunk
+        stdout: Whether to read from stdout
+        stderr: Whether to read from stderr
 
     Yields:
-        (source, chunk): source 是 "stdout" 或 "stderr"，chunk 是 bytes
+        (source, chunk): source is "stdout" or "stderr", chunk is bytes
 
     Raises:
         RuntimeError: If no streams are available
 
     Warning:
-        如果子进程持续输出而调用者提前退出循环，子进程可能会阻塞。
-        请确保正确处理进程生命周期（使用 try/finally 或 async with）。
+        If the subprocess continues producing output while the caller exits
+        the loop early, the subprocess may block. Ensure proper process
+        lifecycle management (use try/finally or async with).
 
     Example:
         >>> proc = await async_create_nsjail(

@@ -46,16 +46,16 @@ def build_nsjail_args(
     options: NsjailOptions | None = None,
     config_file: StrPath | None = None,
 ) -> list[str]:
-    """构建 nsjail 命令行参数
+    """Build nsjail command line arguments.
 
-    用于调试、测试或手动执行。
+    For debugging, testing, or manual execution.
 
     Args:
-        options: NsjailOptions 配置
-        config_file: nsjail 配置文件路径
+        options: NsjailOptions configuration
+        config_file: Path to nsjail config file
 
     Returns:
-        nsjail 命令行参数列表（不含二进制路径和命令）
+        List of nsjail command line arguments (without binary path and command)
 
     Example:
         >>> args = build_nsjail_args(NsjailOptions(chroot="/"))
@@ -75,17 +75,17 @@ def build_nsenter_args(
     namespaces: Iterable[NamespaceType],
     options: NsenterOptions | None = None,
 ) -> list[str]:
-    """构建 nsenter 命令行参数
+    """Build nsenter command line arguments.
 
-    用于调试、测试或手动执行。
+    For debugging, testing, or manual execution.
 
     Args:
-        target_pid: 目标进程 PID
-        namespaces: 要进入的命名空间列表
-        options: NsenterOptions 配置
+        target_pid: Target process PID
+        namespaces: List of namespace types to enter
+        options: NsenterOptions configuration
 
     Returns:
-        nsenter 命令行参数列表（不含二进制路径和命令）
+        List of nsenter command line arguments (without binary path and command)
 
     Example:
         >>> args = build_nsenter_args(1234, ["net"])
@@ -118,16 +118,16 @@ def create_nsjail(
     *args,
     **kwargs,
 ) -> subprocess.Popen:
-    """创建 nsjail 子进程（同步）
+    """Create nsjail subprocess (synchronous).
 
     Args:
-        command: 在 nsjail 中执行的命令
-        options: NsjailOptions 配置
-        config_file: nsjail 配置文件路径
-        *args, **kwargs: 传递给 subprocess.Popen 的其他参数
+        command: Command to execute inside nsjail
+        options: NsjailOptions configuration
+        config_file: Path to nsjail config file
+        *args, **kwargs: Additional arguments passed to subprocess.Popen
 
     Returns:
-        subprocess.Popen 实例
+        subprocess.Popen instance
 
     Example:
         >>> proc = create_nsjail(["/bin/echo", "hello"], stdout=subprocess.PIPE)
@@ -136,7 +136,7 @@ def create_nsjail(
     nsjail_path = locate_nsjail()
     nsjail_args = build_nsjail_args(options, config_file)
 
-    cmd = [str(nsjail_path), *nsjail_args, "--", *command]
+    cmd: list[str] = [str(nsjail_path), *nsjail_args, "--", *command]
     return subprocess.Popen(cmd, *args, **kwargs)
 
 
@@ -148,17 +148,17 @@ def create_nsenter(
     *args,
     **kwargs,
 ) -> subprocess.Popen:
-    """创建 nsenter 子进程（同步）
+    """Create nsenter subprocess (synchronous).
 
     Args:
-        target_pid: 目标进程 PID
-        namespaces: 要进入的命名空间列表
-        command: 要在命名空间中执行的命令
-        options: NsenterOptions 配置
-        *args, **kwargs: 传递给 subprocess.Popen 的其他参数
+        target_pid: Target process PID
+        namespaces: List of namespace types to enter
+        command: Command to execute inside the namespace
+        options: NsenterOptions configuration
+        *args, **kwargs: Additional arguments passed to subprocess.Popen
 
     Returns:
-        subprocess.Popen 实例
+        subprocess.Popen instance
 
     Raises:
         RuntimeError: If nsenter command is not found
@@ -177,5 +177,5 @@ def create_nsenter(
         )
 
     nsenter_args = build_nsenter_args(target_pid, namespaces, options)
-    cmd = [nsenter_path, *nsenter_args, "--", *command]
+    cmd: list[str] = [nsenter_path, *nsenter_args, "--", *command]
     return subprocess.Popen(cmd, *args, **kwargs)

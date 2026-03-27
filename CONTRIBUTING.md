@@ -183,6 +183,37 @@ Repaired wheels are in `wheelhouse/`.
 5. Ensure `pre-commit run -a --all-files` passes
 6. Submit a pull request
 
+## Release Process
+
+This project uses git-flow for branching and version management. Tag format follows git-flow conventions with `v` prefix (e.g., `v0.3.0b1`), which is automatically added by git-flow.
+
+**Version format**: `X.Y.Z{pre}` where `pre` can be:
+- `aN` (alpha): `v0.3.0a1`
+- `bN` (beta): `v0.3.0b1`
+- `rcN` (release candidate): `v0.3.0rc1`
+- (no suffix): stable release: `v0.3.0`
+
+**PyPI compatibility**: PyPI strips the `v` prefix when displaying versions, so `v0.3.0b1` becomes `0.3.0b1` on PyPI.
+
+**Release steps**:
+```bash
+# 1. Start release branch (version without v prefix)
+git flow release start 0.3.0b1
+
+# 2. Update CHANGELOG.md in the release branch
+# Edit version number and date
+
+# 3. Finish release (creates tag v0.3.0b1)
+git flow release finish 0.3.0b1
+
+# 4. Push tags and branches
+git push origin main
+git push origin develop
+git push origin v0.3.0b1
+```
+
+**Important**: When using `git flow release start`, use the version **without** the `v` prefix (e.g., `0.3.0b1`, not `v0.3.0b1`). Git-flow will automatically add the `v` prefix when creating the tag.
+
 ### Commit Message Format
 
 Use clear, descriptive commit messages:

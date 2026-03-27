@@ -1,8 +1,74 @@
 # CHANGELOG
 
-## [v0.3.0-a1]
+## [v0.3.0b1]
 
-📅 Unreleased
+📅 2026-03-28
+
+### ✨ Added
+
+- **Complete nsjail options coverage** - `NsjailOptions` now covers 95%+ of nsjail CLI options
+  - Execution modes: ONCE, EXECVE, RERUN, LISTEN (TCP server)
+  - Full resource limits: all rlimit options (cpu, as, core, fsize, nproc, stack, etc.)
+  - cgroup v1/v2 support: memory, pids, cpu, net_cls controllers
+  - Networking: macvlan, iface management, pasta (user-mode networking)
+  - Mount options: mount, symlink, tmpfsmount with size limits
+  - Capabilities and seccomp policy support
+  - UID/GID mapping for unprivileged namespaces
+  - Logging: multiple verbosity levels, file/fd output
+  - Process control: daemon, signals, fd passing
+  - `hostname` option for UTS namespace isolation
+
+- **Complete nsenter options coverage** - `NsenterOptions` covers all nsenter CLI options
+  - Namespace selection: all or specific namespaces
+  - Working directory control: wd, wdns, root
+  - User/group management with parent namespace support
+  - Credentials and capabilities preservation
+  - Environment inheritance from target process
+  - Process control: no-fork, cgroup joining
+  - SELinux context following
+
+- **ProcessOptionsProtocol** - Type protocol for options consistency
+
+### 🔄 Changed
+
+- **Python-agnostic wheels** - Wheels are now `py3-none-{platform}`, compatible with all Python 3.9+
+  - Removed fake C extension stub (`_stub.c`)
+  - Wheels work across Python versions without rebuilding
+
+- **Dual sync/async API** - Complete API redesign for consistency
+  - Sync: `create_nsjail()`, `create_nsenter()` returning `subprocess.Popen`
+  - Async: `async_create_nsjail()`, `async_create_nsenter()` returning `asyncio.subprocess.Process`
+  - Helper: `interleave_streams()` for interleaving stdout/stderr in async
+  - All `*args` and `**kwargs` passed through to stdlib subprocess functions
+  - **EOF signaling**: `interleave_streams()` now yields `b""` on EOF so callers can detect stream end
+
+- **Options naming consistency** - Renamed options to match nsjail CLI naming
+  - `clear_env` → `keep_env` (inverted logic for clarity)
+  - `cpu_time_limit` → `rlimit_cpu`
+  - `memory_limit` → `rlimit_as`
+  - `max_pids` → `cgroup_pids_max`
+  - `max_open_files` → `rlimit_nofile`
+
+### 🗑️ Removed
+
+- **High-level wrapper classes** - Removed `NsjailProcess` and `NsenterContext`
+  - Use stdlib `subprocess.Popen` / `asyncio.subprocess.Process` directly
+  - Simpler, more transparent, better IDE support
+
+### 🔧 Internal
+
+- **wheel structure** - Reorganized to comply with wheel spec (Root-Is-Purelib: false)
+  - All files now at wheel root instead of `.data` subdirectories
+  - Correct rpath for auditwheel-repaired wheels (`$ORIGIN/../../python_nsjail.libs`)
+- **CI build** - Simplified to use `uv build --wheel` with single Python version
+  - Git ownership detection fix for Docker containers
+- **Module reorganization** - Split `process.py` into `subprocess.py` and `async_subprocess.py`
+- **Error messages** - Improved binary not found errors with file path information
+- **Options organization** - Reorganized with clear section headers for better navigation
+
+## [v0.3.0a1]
+
+📅 2026-03-25
 
 ### 🔄 Changed
 
@@ -31,110 +97,3 @@
 - **Module reorganization** - Split `process.py` into `subprocess.py` and `async_subprocess.py`
 
 ## [v0.2.0]
-
-📅 Released 2025-03-25
-
-### ✨ Added
-
-- **nsenter integration** - Execute commands inside existing container namespaces
-  - `create_nsenter_process()` - Create process via nsenter command
-  - `NsenterOptions` - Configuration for nsenter (cwd, env)
-  - Support for all namespace types: net, mnt, ipc, uts, pid, user, cgroup
-
-- **stdin write support** - Interactive process communication
-  - `write(data: bytes)` - Async write with drain (wait for flush)
-  - `write_nowait(data: bytes)` - Non-blocking write to buffer
-  - `writable_stdin` parameter - Control stdin connection in factory functions
-
-- **`nsjail-status` command** - Display installation and binary location info
-
-### 🔄 Changed
-
-- **API simplification** - Merged `command` and `args` into single `command: Sequence[str]` parameter
-  - Before: `create_nsjail_process(command="/bin/echo", args=["hello"])`
-  - After: `create_nsjail_process(command=["/bin/echo", "hello"])`
-
-- **stream() state management** - Simplified by removing mutual exclusion lock
-  - Always queue data (regardless of stream activity)
-  - Check EOF state instead of tracking active stream
-
-- **Default buffer settings** - Optimized for sandbox service scenarios
-  - `buffer_size`: 65536 → 256 (queue items, ~2MB per process)
-  - `chunk_size`: 1024 → 8192 (better I/O efficiency, lower latency)
-
-### 🗑️ Removed
-
-- **Unused modules** - Cleaned up redundant code
-  - `NamespaceContext` - Untested Python 3.12+ programmatic namespace entry
-  - `nsenter.py` wrapper module - Functionality moved to process.py
-  - `_compat.py` ctypes fallback - Only used by removed context.py
-
-### 📚 Documentation
-
-- **README badges** - CI, GitHub release, PyPI version, Python version, license
-- **pyproject.toml** - Enhanced classifiers and project URLs (Documentation, Bug Tracker, Changelog)
-
-### ✅ Tests
-
-- Added comprehensive tests for nsenter functionality
-- Added stdin write/read tests
-- Improved test coverage to 45 tests
-
-## [v0.1.1]
-
-📅 Released 2025-03-24
-
-### ✨ Added
-
-- **Async Python API** for programmatic nsjail process management
-  - `create_nsjail_process()` - Create and manage nsjail subprocesses
-  - `NsjailProcess` class - Async process wrapper with streaming support
-  - `stream()` method - Stream stdout/stderr with preserved ordering
-  - Context manager support (`async with`) for automatic cleanup
-
-- 🌍 **Environment variable** `NSJAIL` - Override nsjail binary path
-  - Supports `~` and `$VAR` expansion
-
-- 🔧 **Helper functions** for binary location:
-  - `locate_nsjail()` - Smart binary location with env var support
-  - `bundled_binary()` - Get bundled nsjail path
-  - `console_script()` - Get wrapper script path
-
-- 📊 **`nsjail-status` command** - Display installation status
-- 🧪 **Code coverage** - `.coveragerc` configuration
-
-### 🔄 Changed
-
-- 📂 **Module rename**: `find.py` → `locator.py` for clearer naming
-- 🏷️ **Function rename**: `get_nsjail_path` → `locate_nsjail` for consistency
-- ⭕ **Queue semantics**: Ring buffer (discard oldest) instead of blocking when full
-- 🔚 **EOF handling**: Use `set` to track EOF from both stdout/stderr
-- 🛡️ **Fallback EOF**: Ensure EOF markers sent even if reader tasks cancelled
-
-### 🐛 Fixed
-
-- 📦 **typing-extensions**: Fixed package name (`typing-extension` → `typing-extensions`)
-- ❌ **Redundant flag**: Removed `-Mo` flag (nsjail default is MODE_STANDALONE_ONCE)
-
-### ⚡ Improved
-
-- ✅ **Test coverage**: 477 lines of tests for Python API
-- 📚 **Documentation**: README reorganized for clarity
-- 🛠️ **Linter configs**: Updated ruff, mypy configurations
-- 💬 **Error messages**: More descriptive FileNotFoundError messages
-
-### 🔧 Internal
-
-- 📦 Imports now use wildcard from submodules
-- 🎯 Better separation of concerns (locator, status, process)
-
-## [v0.1.0]
-
-📅 Released 2025-03-23
-
-### ✨ Added
-
-- 🎉 Initial release
-- 📦 Prebuilt nsjail binaries (Linux x86_64, aarch64)
-- 🔧 `nsjail` command wrapper
-- ⛰️ Basic mount options support

@@ -19,7 +19,7 @@ from .options import NsenterOptions, NsjailOptions
 from .subprocess import build_nsenter_args, build_nsjail_args
 from .types import StreamType, NamespaceType
 
-__all__ = ("async_create_nsjail", "async_create_nsenter", "merge_streams")
+__all__ = ("async_create_nsjail", "async_create_nsenter", "interleave_streams")
 
 
 # ==================== Factory Functions ====================
@@ -102,13 +102,16 @@ async def async_create_nsenter(
 # ==================== Utility Functions ====================
 
 
-async def merge_streams(
+async def interleave_streams(
     proc: asyncio.subprocess.Process,
     chunk_size: int = 8192,
     stdout: bool = True,
     stderr: bool = True,
 ) -> AsyncIterator[tuple[StreamType, bytes]]:
-    """Merge stdout/stderr streams utility function.
+    """Interleave stdout/stderr streams from a subprocess.
+
+    Reads from stdout and stderr concurrently, yielding chunks as they
+    become available (in interleaved order).
 
     Args:
         proc: asyncio subprocess instance
@@ -123,23 +126,40 @@ async def merge_streams(
         RuntimeError: If no streams are available
 
     Warning:
-        If the subprocess continues producing output while the caller exits
-        the loop early, the subprocess may block. Ensure proper process
-        lifecycle management (use try/finally or async with).
+        **You are responsible for terminating the subprocess.**
 
-    Example:
+        If the loop exits early (due to break, exception, or cancellation),
+        pending tasks reading from the streams will continue running until
+        the subprocess terminates or EOF is reached. The async generator
+        cannot clean up these tasks because Python's async iterator design
+        provides no mechanism for guaranteed cleanup when interrupted.
+
+        Always use try/finally to ensure the subprocess is terminated:
+
         >>> proc = await async_create_nsjail(
         ...     ["/bin/cat", "file"], stdout=PIPE, stderr=PIPE
         ... )
-        >>> async for source, chunk in merge_streams(proc):
-        ...     if source == "stdout":
-        ...         print(chunk.decode(), end="")
+        >>> try:
+        ...     async for source, chunk in interleave_streams(proc):
+        ...         if source == "stdout":
+        ...             print(chunk.decode(), end="")
+        ...         if some_condition:
+        ...             break
+        ... finally:
+        ...     if proc.returncode is None:
+        ...         proc.kill()
+        ...         await proc.wait()
+
+    Note:
+        This is a fundamental limitation of Python async generators. See:
+        - https://peps.python.org/pep-0533/
+        - https://github.com/python-trio/trio/issues/265
     """
     streams: dict[StreamType, asyncio.StreamReader] = {}
-    if stdout and (s := proc.stdout):
-        streams["stdout"] = s
-    if stderr and (s := proc.stderr):
-        streams["stderr"] = s
+    if stdout and (reader := proc.stdout):
+        streams["stdout"] = reader
+    if stderr and (reader := proc.stderr):
+        streams["stderr"] = reader
 
     if not streams:
         raise RuntimeError("No streams available")

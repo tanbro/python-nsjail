@@ -35,10 +35,10 @@ class NsjailMode(str, Enum):
 class NsjailOptions(ProcessOptionsProtocol):
     """nsjail command line options (arguments before '--')."""
 
-    # Execution mode
+    # ==================== Execution Mode ====================
     mode: NsjailMode | str | None = None  # --mode|-M
 
-    # Filesystem
+    # ==================== Filesystem ====================
     chroot: str | None = None  # --chroot DIR
     cwd: str | None = None  # --cwd DIR
     hostname: str | None = None  # --hostname HOSTNAME
@@ -47,46 +47,66 @@ class NsjailOptions(ProcessOptionsProtocol):
     rw: bool | None = None  # --rw (mount chroot as rw)
     no_pivotroot: bool | None = None  # --no_pivotroot
 
-    # Bind mounts (--bindmount_ro, --bindmount)
-    # Supports 'source' or 'source:dest' syntax
-    bindmount_ro: Sequence[str] | None = None  # read-only bind mounts
-    bindmount: Sequence[str] | None = None  # read-write bind mounts
+    # Mounts
+    bindmount_ro: Sequence[str] | None = None  # --bindmount_ro|-R (read-only)
+    bindmount: Sequence[str] | None = None  # --bindmount|-B (read-write)
+    mount: Sequence[str] | None = None  # --mount|-m SRC:DST:FS_TYPE:OPTIONS
+    symlink: Sequence[str] | None = None  # --symlink|-s SRC:DST
+    tmpfsmount: Sequence[str] | None = None  # --tmpfsmount|-T DST
 
-    # Mounts and symlinks
-    mount: Sequence[str] | None = None  # --mount SRC:DST [:OPTIONS]
-    symlink: Sequence[str] | None = None  # --symlink SRC:DST
+    # ==================== User/Group ====================
+    user: str | int | None = None  # --user|-u UID
+    group: str | int | None = None  # --group|-g GID
+    uid_mapping: str | None = None  # --uid_mapping|-U "inside:outside:count"
+    gid_mapping: str | None = None  # --gid_mapping|-G "inside:outside:count"
 
-    # Tmpfs mounts (--tmpfsmount)
-    # Supports 'dest' syntax
-    tmpfsmount: Sequence[str] | None = None
+    # ==================== Environment ====================
+    keep_env: bool | None = None  # --keep_env|-e (true/false)
+    env: Mapping[str, str] | None = None  # --env|-E K=V
 
-    # User/Group
-    user: str | int | None = None  # --user UID
-    group: str | int | None = None  # --group GID
-
-    # Environment
-    keep_env: bool | None = None  # None=don't pass, True=--keep_env=true
-    env: Mapping[str, str] | None = None  # None/empty=don't pass, else --env k=v
-
-    # Resource limits
-    time_limit: int | None = None  # --time_limit SEC (wall time)
+    # ==================== Resource Limits (rlimit) ====================
+    time_limit: int | None = None  # --time_limit|-t SEC (wall time)
     rlimit_cpu: int | None = None  # --rlimit_cpu SEC (CPU time)
-    rlimit_as: int | None = None  # --rlimit_as MB
-    rlimit_core: int | None = None  # --rlimit_core BYTES
-    rlimit_fsize: int | None = None  # --rlimit_fsize BYTES
-    rlimit_nproc: int | None = None  # --rlimit_nproc N
-    rlimit_stack: int | None = None  # --rlimit_stack BYTES
-    rlimit_memlock: int | None = None  # --rlimit_memlock BYTES
-    rlimit_msgqueue: int | None = None  # --rlimit_msgqueue BYTES
-    rlimit_rtprio: int | None = None  # --rlimit_rtprio PRIO
-    max_cpus: int | None = None  # --max_cpus N
-    cgroup_pids_max: int | None = None  # --cgroup_pids_max N
-    rlimit_nofile: int | None = None  # --rlimit_nofile N
+    rlimit_as: int | None = None  # --rlimit_as BYTES (address space)
+    rlimit_core: int | None = None  # --rlimit_core BYTES (core dump)
+    rlimit_fsize: int | None = None  # --rlimit_fsize BYTES (file size)
+    rlimit_nproc: int | None = None  # --rlimit_nproc N (process count)
+    rlimit_stack: int | None = None  # --rlimit_stack BYTES (stack)
+    rlimit_memlock: int | None = None  # --rlimit_memlock BYTES (locked memory)
+    rlimit_msgqueue: int | None = None  # --rlimit_msgqueue BYTES (POSIX msg queue)
+    rlimit_nofile: int | None = None  # --rlimit_nofile N (open files)
+    rlimit_rtprio: int | None = None  # --rlimit_rtprio PRIO (realtime priority)
     nice_level: int | None = None  # --nice_level N
+    max_cpus: int | None = None  # --max_cpus N
     disable_rlimits: bool | None = None  # --disable_rlimits
 
-    # Namespace control
-    disable_clone_newnet: bool | None = None
+    # ==================== cgroup v1 ====================
+    # Memory
+    cgroup_mem_max: int | None = None  # --cgroup_mem_max BYTES
+    cgroup_mem_memsw_max: int | None = None  # --cgroup_mem_memsw_max BYTES
+    cgroup_mem_swap_max: int | None = None  # --cgroup_mem_swap_max BYTES
+    cgroup_mem_mount: str | None = None  # --cgroup_mem_mount PATH
+    cgroup_mem_parent: str | None = None  # --cgroup_mem_parent NAME
+    # PIDs
+    cgroup_pids_max: int | None = None  # --cgroup_pids_max N
+    cgroup_pids_mount: str | None = None  # --cgroup_pids_mount PATH
+    cgroup_pids_parent: str | None = None  # --cgroup_pids_parent NAME
+    # CPU
+    cgroup_cpu_ms_per_sec: int | None = None  # --cgroup_cpu_ms_per_sec MSEC
+    cgroup_cpu_mount: str | None = None  # --cgroup_cpu_mount PATH
+    cgroup_cpu_parent: str | None = None  # --cgroup_cpu_parent NAME
+    # Network class
+    cgroup_net_cls_classid: int | None = None  # --cgroup_net_cls_classid ID
+    cgroup_net_cls_mount: str | None = None  # --cgroup_net_cls_mount PATH
+    cgroup_net_cls_parent: str | None = None  # --cgroup_net_cls_parent NAME
+
+    # ==================== cgroup v2 ====================
+    cgroupv2_mount: str | None = None  # --cgroupv2_mount PATH
+    use_cgroupv2: bool | None = None  # --use_cgroupv2
+    detect_cgroupv2: bool | None = None  # --detect_cgroupv2
+
+    # ==================== Namespaces ====================
+    disable_clone_newnet: bool | None = None  # --disable_clone_newnet|-N
     disable_clone_newuser: bool | None = None
     disable_clone_newns: bool | None = None  # --disable_clone_newns
     disable_clone_newpid: bool | None = None
@@ -98,41 +118,49 @@ class NsjailOptions(ProcessOptionsProtocol):
     disable_proc: bool | None = None  # --disable_proc
     disable_tsc: bool | None = None  # --disable_tsc
 
-    # UID/GID mapping (for unprivileged user namespaces)
-    uid_mapping: str | None = None  # --uid_mapping "inside_uid:outside_uid:count"
-    gid_mapping: str | None = None  # --gid_mapping "inside_gid:outside_gid:count"
-
-    # Networking
-    iface_no_lo: bool | None = None  # --iface_no_lo (don't bring lo up)
-    iface_own: Sequence[str] | None = None  # --iface_own IFACE (move interface)
+    # ==================== Networking ====================
+    iface_no_lo: bool | None = None  # --iface_no_lo
+    iface_own: Sequence[str] | None = None  # --iface_own IFACE
     macvlan_iface: str | None = None  # --macvlan_iface|-I IFACE
     macvlan_vs_ip: str | None = None  # --macvlan_vs_ip IP
     macvlan_vs_nm: str | None = None  # --macvlan_vs_nm NETMASK
     macvlan_vs_gw: str | None = None  # --macvlan_vs_gw GATEWAY
-    use_pasta: bool | None = None  # --use_pasta (user-mode networking)
+    macvlan_vs_ma: str | None = None  # --macvlan_vs_ma MAC_ADDRESS
+    macvlan_vs_mo: str | None = None  # --macvlan_vs_mo MTU
+    use_pasta: bool | None = None  # --use_pasta
 
-    # Logging
-    log_file: str | None = None  # --log PATH
-    log_fd: int | None = None  # --log_fd FD
-    verbose: bool | None = None  # --verbose
-    quiet: bool | None = None  # --quiet
-    really_quiet: bool | None = None  # --really_quiet
+    # ==================== LISTEN Mode ====================
+    port: int | None = None  # --port|-p PORT
+    bindhost: str | None = None  # --bindhost HOST
+    max_conns: int | None = None  # --max_conns N
+    max_conns_per_ip: int | None = None  # --max_conns_per_ip|-i N
+
+    # ==================== Execution ====================
+    exec_file: str | None = None  # --exec_file|-x PATH
+    execute_fd: bool | None = None  # --execute_fd
+
+    # ==================== Logging ====================
+    log_file: str | None = None  # --log|-l PATH
+    log_fd: int | None = None  # --log_fd|-L FD
+    verbose: bool | None = None  # --verbose|-v
+    quiet: bool | None = None  # --quiet|-q
+    really_quiet: bool | None = None  # --really_quiet|-Q
     silent: bool | None = None  # --silent
     stderr_to_null: bool | None = None  # --stderr_to_null
 
-    # Process control
+    # ==================== Process Control ====================
     daemon: bool | None = None  # --daemon|-d
     skip_setsid: bool | None = None  # --skip_setsid
     forward_signals: bool | None = None  # --forward_signals
     pass_fd: Sequence[int] | None = None  # --pass_fd FD
 
-    # Capabilities
+    # ==================== Capabilities ====================
     keep_caps: bool | None = None  # --keep_caps
     cap: Sequence[str] | None = None  # --cap CAPABILITY
 
-    # Seccomp
+    # ==================== Seccomp ====================
     seccomp_log: bool | None = None  # --seccomp_log
-    seccomp_policy: str | None = None  # --seccomp_policy PATH
+    seccomp_policy: str | None = None  # --seccomp_policy|-P PATH
     seccomp_string: str | None = None  # --seccomp_string STRING
 
     def build_args(self) -> Sequence[str]:
@@ -193,6 +221,10 @@ class NsjailOptions(ProcessOptionsProtocol):
             args.extend(["--user", str(self.user)])
         if self.group is not None:
             args.extend(["--group", str(self.group)])
+        if self.uid_mapping is not None:
+            args.extend(["--uid_mapping", self.uid_mapping])
+        if self.gid_mapping is not None:
+            args.extend(["--gid_mapping", self.gid_mapping])
 
         # Environment
         if self.keep_env is not None:
@@ -227,8 +259,6 @@ class NsjailOptions(ProcessOptionsProtocol):
             args.extend(["--rlimit_rtprio", str(self.rlimit_rtprio)])
         if self.max_cpus is not None:
             args.extend(["--max_cpus", str(self.max_cpus)])
-        if self.cgroup_pids_max is not None:
-            args.extend(["--cgroup_pids_max", str(self.cgroup_pids_max)])
         if self.rlimit_nofile is not None:
             args.extend(["--rlimit_nofile", str(self.rlimit_nofile)])
         if self.nice_level is not None:
@@ -236,7 +266,48 @@ class NsjailOptions(ProcessOptionsProtocol):
         if self.disable_rlimits:
             args.append("--disable_rlimits")
 
-        # Namespace control
+        # cgroup v1: Memory
+        if self.cgroup_mem_max is not None:
+            args.extend(["--cgroup_mem_max", str(self.cgroup_mem_max)])
+        if self.cgroup_mem_memsw_max is not None:
+            args.extend(["--cgroup_mem_memsw_max", str(self.cgroup_mem_memsw_max)])
+        if self.cgroup_mem_swap_max is not None:
+            args.extend(["--cgroup_mem_swap_max", str(self.cgroup_mem_swap_max)])
+        if self.cgroup_mem_mount is not None:
+            args.extend(["--cgroup_mem_mount", self.cgroup_mem_mount])
+        if self.cgroup_mem_parent is not None:
+            args.extend(["--cgroup_mem_parent", self.cgroup_mem_parent])
+        # cgroup v1: PIDs
+        if self.cgroup_pids_max is not None:
+            args.extend(["--cgroup_pids_max", str(self.cgroup_pids_max)])
+        if self.cgroup_pids_mount is not None:
+            args.extend(["--cgroup_pids_mount", self.cgroup_pids_mount])
+        if self.cgroup_pids_parent is not None:
+            args.extend(["--cgroup_pids_parent", self.cgroup_pids_parent])
+        # cgroup v1: CPU
+        if self.cgroup_cpu_ms_per_sec is not None:
+            args.extend(["--cgroup_cpu_ms_per_sec", str(self.cgroup_cpu_ms_per_sec)])
+        if self.cgroup_cpu_mount is not None:
+            args.extend(["--cgroup_cpu_mount", self.cgroup_cpu_mount])
+        if self.cgroup_cpu_parent is not None:
+            args.extend(["--cgroup_cpu_parent", self.cgroup_cpu_parent])
+        # cgroup v1: Network class
+        if self.cgroup_net_cls_classid is not None:
+            args.extend(["--cgroup_net_cls_classid", str(self.cgroup_net_cls_classid)])
+        if self.cgroup_net_cls_mount is not None:
+            args.extend(["--cgroup_net_cls_mount", self.cgroup_net_cls_mount])
+        if self.cgroup_net_cls_parent is not None:
+            args.extend(["--cgroup_net_cls_parent", self.cgroup_net_cls_parent])
+
+        # cgroup v2
+        if self.cgroupv2_mount is not None:
+            args.extend(["--cgroupv2_mount", self.cgroupv2_mount])
+        if self.use_cgroupv2:
+            args.append("--use_cgroupv2")
+        if self.detect_cgroupv2:
+            args.append("--detect_cgroupv2")
+
+        # Namespaces
         if self.disable_clone_newnet:
             args.append("--disable_clone_newnet")
         if self.disable_clone_newuser:
@@ -260,12 +331,6 @@ class NsjailOptions(ProcessOptionsProtocol):
         if self.disable_tsc:
             args.append("--disable_tsc")
 
-        # UID/GID mapping
-        if self.uid_mapping is not None:
-            args.extend(["--uid_mapping", self.uid_mapping])
-        if self.gid_mapping is not None:
-            args.extend(["--gid_mapping", self.gid_mapping])
-
         # Networking
         if self.iface_no_lo:
             args.append("--iface_no_lo")
@@ -280,8 +345,28 @@ class NsjailOptions(ProcessOptionsProtocol):
             args.extend(["--macvlan_vs_nm", self.macvlan_vs_nm])
         if self.macvlan_vs_gw is not None:
             args.extend(["--macvlan_vs_gw", self.macvlan_vs_gw])
+        if self.macvlan_vs_ma is not None:
+            args.extend(["--macvlan_vs_ma", self.macvlan_vs_ma])
+        if self.macvlan_vs_mo is not None:
+            args.extend(["--macvlan_vs_mo", self.macvlan_vs_mo])
         if self.use_pasta:
             args.append("--use_pasta")
+
+        # LISTEN mode
+        if self.port is not None:
+            args.extend(["--port", str(self.port)])
+        if self.bindhost is not None:
+            args.extend(["--bindhost", self.bindhost])
+        if self.max_conns is not None:
+            args.extend(["--max_conns", str(self.max_conns)])
+        if self.max_conns_per_ip is not None:
+            args.extend(["--max_conns_per_ip", str(self.max_conns_per_ip)])
+
+        # Execution
+        if self.exec_file is not None:
+            args.extend(["--exec_file", self.exec_file])
+        if self.execute_fd:
+            args.append("--execute_fd")
 
         # Logging
         if self.log_file is not None:

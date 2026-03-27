@@ -56,14 +56,10 @@ nsjail = "nsjail.__main__:main"
 nsjail-status = "nsjail.status:main"
 
 [tool.setuptools]
-include-package-data = true
 zip-safe = false
 
 [tool.setuptools.packages.find]
 where = ["src"]
-
-[tool.setuptools.package-data]
-nsjail = ["nsjail"]
 
 [tool.setuptools_scm]
 version_file = "src/nsjail/version.py"

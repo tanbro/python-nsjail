@@ -10,6 +10,9 @@ set -euxo pipefail
 # Install nsjail build dependencies (per nsjail/README.md)
 yum install -y autoconf bison flex libtool libnl3-devel patch pkgconfig protobuf-compiler protobuf-devel
 
+# Install Python build tool
+pip install --disable-pip-version-check build
+
 # Note: manylinux_2_34 uses x86-64-v2 by default (GCC 14 on AlmaLinux 9)
 # This is acceptable since nsjail requires kernel 5.10+, which implies modern hardware
 export ARCH=$(uname -m)

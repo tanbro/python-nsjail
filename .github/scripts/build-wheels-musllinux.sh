@@ -13,6 +13,9 @@ apk update
 # Install nsjail build dependencies (per nsjail/README.md)
 apk add autoconf bison flex libtool libnl3-dev pkgconf protoc protobuf-dev
 
+# Install Python build tool
+pip install --disable-pip-version-check build
+
 # Build wheel - py3-none tag works for all Python 3.x versions
 cd /ws
 echo "Building wheel with python3..."

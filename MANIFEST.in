@@ -1,5 +1,7 @@
 exclude .*
 exclude CLAUDE.md
+exclude AGENTS.md
+exclude CHANGLOG.md
 exclude CODE_OF_CONDUCT.md
 exclude CONTRIBUTING.md
 exclude coverage.*

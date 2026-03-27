@@ -421,21 +421,34 @@ class NsenterOptions(ProcessOptionsProtocol):
     a command. These options control how the namespaces are entered.
     """
 
+    # Namespace selection
+    all_namespaces: bool | None = None  # --all|-a (enter all namespaces)
+
     # Working directory
-    wd: str | None = None  # --wd PATH
+    wd: str | None = None  # --wd|-w PATH
+    wdns: str | None = None  # --wdns DIR (working directory in namespace)
 
     # Root filesystem
-    root: str | None = None  # --root DIR
+    root: str | None = None  # --root|-r DIR
 
     # User/Group
-    user: str | None = None  # --user USER
-    group: str | None = None  # --group GROUP
+    user: str | None = None  # --user|-S USER
+    group: str | None = None  # --setgid|-G GROUP
+    user_parent: bool | None = None  # --user-parent (enter parent user namespace)
 
     # Credentials
     preserve_credentials: bool = False  # --preserve-credentials
+    keep_caps: bool | None = None  # --keep-caps (retain capabilities)
 
     # Environment
-    env: Mapping[str, str] | None = None  # --env K=V
+    env: bool | None = None  # --env|-e (inherit from target)
+
+    # Process control
+    no_fork: bool | None = None  # --no-fork|-F
+    join_cgroup: bool | None = None  # --join-cgroup|-c
+
+    # SELinux
+    follow_context: bool | None = None  # --follow-context|-Z
 
     def build_args(self) -> Sequence[str]:
         """Build nsenter command line argument list.
@@ -448,9 +461,15 @@ class NsenterOptions(ProcessOptionsProtocol):
         """
         args: list[str] = []
 
+        # Namespace selection
+        if self.all_namespaces:
+            args.append("--all")
+
         # Working directory
         if self.wd is not None:
             args.extend(["--wd", self.wd])
+        if self.wdns is not None:
+            args.extend(["--wdns", self.wdns])
 
         # Root filesystem
         if self.root is not None:
@@ -460,15 +479,28 @@ class NsenterOptions(ProcessOptionsProtocol):
         if self.user is not None:
             args.extend(["--user", self.user])
         if self.group is not None:
-            args.extend(["--group", self.group])
+            args.extend(["--setgid", self.group])
+        if self.user_parent:
+            args.append("--user-parent")
 
         # Credentials
         if self.preserve_credentials:
             args.append("--preserve-credentials")
+        if self.keep_caps:
+            args.append("--keep-caps")
 
         # Environment
         if self.env:
-            for k, v in self.env.items():
-                args.extend(["--env", f"{k}={v}"])
+            args.append("--env")
+
+        # Process control
+        if self.no_fork:
+            args.append("--no-fork")
+        if self.join_cgroup:
+            args.append("--join-cgroup")
+
+        # SELinux
+        if self.follow_context:
+            args.append("--follow-context")
 
         return args

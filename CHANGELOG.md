@@ -1,8 +1,8 @@
 # CHANGELOG
 
-## [v0.3.0-a1]
+## [v0.3.0b1]
 
-📅 Unreleased
+📅 2026-03-28
 
 ### 🔄 Changed
 

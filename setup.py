@@ -48,12 +48,16 @@ class BdistWheelCommand(bdist_wheel):
         # Fix: Move all files from .data to root for correct auditwheel rpath
         # When Root-Is-Purelib: false, all files should be at root, not in .data
         wheel_dir = Path(self.dist_dir or "dist")
-        wheel_files = list(wheel_dir.glob("python_nsjail-*-py3-none-*.whl"))
-        if not wheel_files:
+
+        # Construct the wheel filename from distribution info and tags
+        py_tag, abi_tag, plat_tag = self.get_tag()
+        wheel_name = f"{self.wheel_dist_name}-{py_tag}-{abi_tag}-{plat_tag}.whl"
+        wheel_file = wheel_dir / wheel_name
+
+        if not wheel_file.exists():
+            print(f"Warning: Expected wheel not found: {wheel_file}")
             return
 
-        # The wheel we just built is the only one matching this pattern
-        wheel_file = wheel_files[0]
         print(f"Fixing wheel structure: {wheel_file.name}")
 
         with tempfile.TemporaryDirectory() as tmpdir:

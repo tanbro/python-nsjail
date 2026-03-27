@@ -34,22 +34,22 @@ def test_locate_nsjail():
     assert isinstance(result, Path)
 
 
-def test_bundled_binary():
+def bundled_nsjail():
     """Test that bundled_binary() returns a Path."""
-    result = nsjail.bundled_binary()
+    result = nsjail.bundled_nsjail()
     assert isinstance(result, Path)
 
 
-def test_console_script():
+def test_scripts_nsjail():
     """Test that console_script() returns expected type."""
-    result = nsjail.console_script()
+    result = nsjail.scripts_nsjail()
     # May not exist in all environments
     assert result is None or isinstance(result, Path)
 
 
-def test_nsjail_binary_executable():
+def test_bundled_nsjail_executable():
     """Test that the nsjail binary is executable."""
-    nsjail_path = nsjail.bundled_binary()
+    nsjail_path = nsjail.bundled_nsjail()
     assert os.access(nsjail_path, os.X_OK), (
         f"nsjail binary is not executable: {nsjail_path}"
     )
@@ -57,7 +57,7 @@ def test_nsjail_binary_executable():
 
 def test_nsjail_runs():
     """Test that the nsjail binary runs and shows usage."""
-    nsjail_path = nsjail.bundled_binary()
+    nsjail_path = nsjail.bundled_nsjail()
 
     result = subprocess.run(
         [str(nsjail_path)],
@@ -70,7 +70,7 @@ def test_nsjail_runs():
 
 def test_nsjail_help():
     """Test that nsjail --help works."""
-    nsjail_path = nsjail.bundled_binary()
+    nsjail_path = nsjail.bundled_nsjail()
 
     result = subprocess.run(
         [str(nsjail_path), "--help"],

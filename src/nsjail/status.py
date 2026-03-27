@@ -4,14 +4,14 @@ import shutil
 
 from ._nsjail_version import __nsjail_version__
 from .version import __version__
-from .locator import which_nsjail, bundled_binary, console_script
+from .locator import which_nsjail, bundled_nsjail, scripts_nsjail
 
 
 def main() -> None:
     """Entry point for nsjail-status command."""
     which_ = which_nsjail()
-    bundled = bundled_binary()
-    script = console_script()
+    bundled = bundled_nsjail()
+    script = scripts_nsjail()
 
     # nsenter status
     which_nsenter = shutil.which("nsenter")

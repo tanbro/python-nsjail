@@ -2,7 +2,7 @@
 # Build script for musllinux containers (musl-based, Alpine)
 # This script runs inside musllinux Docker images to:
 # 1. Install nsjail build dependencies
-# 2. Build wheels for multiple Python versions
+# 2. Build wheel (py3-none, works for all Python 3.x)
 # 3. Run auditwheel repair to vendor .so files and fix musllinux tags
 
 set -euxo pipefail
@@ -13,17 +13,12 @@ apk update
 # Install nsjail build dependencies (per nsjail/README.md)
 apk add autoconf bison flex libtool libnl3-dev pkgconf protoc protobuf-dev
 
-# Python versions to build (available in PATH as python3.X)
-PYTHON_VERSIONS="3.9 3.10 3.11 3.12 3.13 3.14"
-
-# Build wheels - setuptools will compile nsjail via BuildExtCommand
+# Build wheel - py3-none tag works for all Python 3.x versions
 cd /ws
-for py_ver in $PYTHON_VERSIONS; do
-    echo "Building wheel with python$py_ver..."
-    python$py_ver -m build --wheel
-done
+echo "Building wheel with uv..."
+python3.12 -m build --wheel
 
-# Run auditwheel repair on all wheels
+# Run auditwheel repair on the wheel
 auditwheel repair dist/*.whl
 
 # Verify wheels were created

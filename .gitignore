@@ -464,7 +464,7 @@ CMakeUserPresets.json
 *.vsix
 
 
-CLAUDE.md
+
 *.lock
 wheelhouse/
 

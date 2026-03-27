@@ -1,5 +1,23 @@
 # CHANGELOG
 
+## [v0.3.0-a1]
+
+📅 Unreleased
+
+### 🔄 Changed
+
+- **Python-agnostic wheels** - Wheels are now `py3-none-{platform}`, compatible with all Python 3.9+
+  - Removed fake C extension stub (`_stub.c`)
+  - Wheels work across Python versions without rebuilding
+
+### 🔧 Internal
+
+- **wheel structure** - Reorganized to comply with wheel spec (Root-Is-Purelib: false)
+  - All files now at wheel root instead of `.data` subdirectories
+  - Correct rpath for auditwheel-repaired wheels (`$ORIGIN/../../python_nsjail.libs`)
+- **CI build** - Simplified to use `uv build --wheel` with single Python version
+- **Function renamed** - `merge_streams()` → `interleave_streams()` for clarity
+
 ## [v0.2.0]
 
 📅 Released 2025-03-25

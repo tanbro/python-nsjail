@@ -57,21 +57,43 @@ class NsjailOptions(ProcessOptionsProtocol):
     group: str | int | None = None  # --group GID
 
     # Environment
-    clear_env: bool | None = None  # None=don't pass, True=--keep_env=false
+    keep_env: bool | None = None  # None=don't pass, True=--keep_env=true
     env: Mapping[str, str] | None = None  # None/empty=don't pass, else --env k=v
 
     # Resource limits
     time_limit: int | None = None  # --time_limit SEC (wall time)
-    cpu_time_limit: int | None = None  # --rlimit_cpu SEC (CPU time)
-    memory_limit: int | None = None  # --rlimit_as MB
+    rlimit_cpu: int | None = None  # --rlimit_cpu SEC (CPU time)
+    rlimit_as: int | None = None  # --rlimit_as MB
     max_cpus: int | None = None  # --max_cpus N
-    max_pids: int | None = None  # --cgroup_pids_max N
-    max_open_files: int | None = None  # --rlimit_nofile N
+    cgroup_pids_max: int | None = None  # --cgroup_pids_max N
+    rlimit_nofile: int | None = None  # --rlimit_nofile N
 
     # Namespace control
     disable_clone_newnet: bool | None = None
     disable_clone_newuser: bool | None = None
     disable_clone_newpid: bool | None = None
+    disable_clone_newipc: bool | None = None
+    disable_clone_newuts: bool | None = None
+    disable_clone_newcgroup: bool | None = None
+
+    # UID/GID mapping (for unprivileged user namespaces)
+    uid_mapping: str | None = None  # --uid_mapping "inside_uid:outside_uid:count"
+    gid_mapping: str | None = None  # --gid_mapping "inside_gid:outside_gid:count"
+
+    # Logging
+    log_file: str | None = None  # --log PATH
+    log_fd: int | None = None  # --log_fd FD
+    verbose: bool | None = None  # --verbose
+    quiet: bool | None = None  # --quiet
+    really_quiet: bool | None = None  # --really_quiet
+
+    # Capabilities
+    keep_caps: bool | None = None  # --keep_caps
+    cap: Sequence[str] | None = None  # --cap CAPABILITY
+
+    # Seccomp
+    seccomp_log: bool | None = None  # --seccomp_log
+    seccomp_policy: str | None = None  # --seccomp_policy PATH
 
     def build_args(self) -> Sequence[str]:
         """Build nsjail command line argument list.
@@ -117,11 +139,11 @@ class NsjailOptions(ProcessOptionsProtocol):
             args.extend(["--group", str(self.group)])
 
         # Environment
-        if self.clear_env is not None:
-            if self.clear_env:
-                args.append("--keep_env=false")
-            else:
+        if self.keep_env is not None:
+            if self.keep_env:
                 args.append("--keep_env=true")
+            else:
+                args.append("--keep_env=false")
         if self.env:
             for k, v in self.env.items():
                 args.extend(["--env", f"{k}={v}"])
@@ -129,16 +151,16 @@ class NsjailOptions(ProcessOptionsProtocol):
         # Resource limits
         if self.time_limit is not None:
             args.extend(["--time_limit", str(self.time_limit)])
-        if self.cpu_time_limit is not None:
-            args.extend(["--rlimit_cpu", str(self.cpu_time_limit)])
-        if self.memory_limit is not None:
-            args.extend(["--rlimit_as", str(self.memory_limit)])
+        if self.rlimit_cpu is not None:
+            args.extend(["--rlimit_cpu", str(self.rlimit_cpu)])
+        if self.rlimit_as is not None:
+            args.extend(["--rlimit_as", str(self.rlimit_as)])
         if self.max_cpus is not None:
             args.extend(["--max_cpus", str(self.max_cpus)])
-        if self.max_pids is not None:
-            args.extend(["--cgroup_pids_max", str(self.max_pids)])
-        if self.max_open_files is not None:
-            args.extend(["--rlimit_nofile", str(self.max_open_files)])
+        if self.cgroup_pids_max is not None:
+            args.extend(["--cgroup_pids_max", str(self.cgroup_pids_max)])
+        if self.rlimit_nofile is not None:
+            args.extend(["--rlimit_nofile", str(self.rlimit_nofile)])
 
         # Namespace control
         if self.disable_clone_newnet:
@@ -147,6 +169,43 @@ class NsjailOptions(ProcessOptionsProtocol):
             args.append("--disable_clone_newuser")
         if self.disable_clone_newpid:
             args.append("--disable_clone_newpid")
+        if self.disable_clone_newipc:
+            args.append("--disable_clone_newipc")
+        if self.disable_clone_newuts:
+            args.append("--disable_clone_newuts")
+        if self.disable_clone_newcgroup:
+            args.append("--disable_clone_newcgroup")
+
+        # UID/GID mapping
+        if self.uid_mapping is not None:
+            args.extend(["--uid_mapping", self.uid_mapping])
+        if self.gid_mapping is not None:
+            args.extend(["--gid_mapping", self.gid_mapping])
+
+        # Logging
+        if self.log_file is not None:
+            args.extend(["--log", self.log_file])
+        if self.log_fd is not None:
+            args.extend(["--log_fd", str(self.log_fd)])
+        if self.verbose:
+            args.append("--verbose")
+        if self.quiet:
+            args.append("--quiet")
+        if self.really_quiet:
+            args.append("--really_quiet")
+
+        # Capabilities
+        if self.keep_caps:
+            args.append("--keep_caps")
+        if self.cap:
+            for c in self.cap:
+                args.extend(["--cap", c])
+
+        # Seccomp
+        if self.seccomp_log:
+            args.append("--seccomp_log")
+        if self.seccomp_policy is not None:
+            args.extend(["--seccomp_policy", self.seccomp_policy])
 
         return args
 

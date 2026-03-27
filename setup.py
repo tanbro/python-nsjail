@@ -94,6 +94,11 @@ class BdistWheelCommand(bdist_wheel):
                         continue
 
                     arcname = str(file.relative_to(extract_dir))
+
+                    # Skip RECORD file - will be regenerated at the end
+                    if arcname.endswith("/RECORD"):
+                        continue
+
                     with open(file, "rb") as f:
                         data = f.read()
 
@@ -107,12 +112,8 @@ class BdistWheelCommand(bdist_wheel):
 
                     zf.writestr(zinfo, data)
 
-                    # Skip RECORD file itself (will be added at the end)
-                    if not arcname.endswith("/RECORD"):
-                        digest = hashlib.sha256(data).hexdigest()
-                        record_entries[arcname] = (
-                            f"{arcname},sha256={digest},{len(data)}"
-                        )
+                    digest = hashlib.sha256(data).hexdigest()
+                    record_entries[arcname] = f"{arcname},sha256={digest},{len(data)}"
 
             # Add RECORD file
             record_path = None

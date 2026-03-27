@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
+import importlib.resources as resources
 import os.path
 import shutil
 import sysconfig
 import warnings
-import importlib.resources as resources
 from pathlib import Path
 
 __all__ = ("locate_nsjail", "bundled_nsjail", "which_nsjail", "scripts_nsjail")
@@ -24,19 +24,22 @@ def which_nsjail() -> str | None:
 def bundled_nsjail() -> Path:
     """Get path to the bundled nsjail binary in this package.
 
-    The binary is installed as package data alongside this module.
+    The binary is installed as package data in the bin/ subdirectory.
 
     Returns:
-        Path to bundled nsjail binary if it exists, None otherwise.
+        Path to bundled nsjail binary.
+
+    Raises:
+        FileNotFoundError: If nsjail binary not found.
     """
-    binary_path = resources.files(__package__) / "nsjail"
+    binary_path = resources.files(__package__) / "bin" / "nsjail"
     if binary_path.is_file():
         return Path(str(binary_path)).resolve()
-    raise FileNotFoundError("Can not find bundled nsjail executable file")
+    raise FileNotFoundError("bundled nsjail binary not found")
 
 
 def scripts_nsjail() -> Path | None:
-    """Get path to our installed console script (e.g., venv/bin/nsjail).
+    """Get path to our installed console script (e.g., .venv/bin/nsjail).
 
     Returns:
         Path to the console script if found, None otherwise.

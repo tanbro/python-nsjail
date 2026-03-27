@@ -57,18 +57,19 @@ pip install build
 # 1. Update submodule
 git submodule update --init --recursive
 
-# 2. Build nsjail binary
-cd nsjail && make && cd ..
-
-# 3. Build wheel
+# 2. Build wheel (compiles nsjail and bundles it)
 #   Using uv:  uv build --wheel
 #   Using pip: python -m build --wheel
 uv build --wheel
+```
 
-# 4. Verify
-#   Using uv:  uv pip install dist/nsjail-*.whl
-#   Using pip: pip install dist/nsjail-*.whl
-uv pip install dist/nsjail-*.whl
+> **Note for developers**: After cloning the repository, you must build the wheel at least once before running tests or importing the package. The build process compiles the nsjail binary and places it at `src/nsjail/bin/nsjail`, which is required for the package to function.
+
+```bash
+# 3. Verify installation
+#   Using uv:  uv pip install dist/*.whl
+#   Using pip: pip install dist/*.whl
+uv pip install dist/python_nsjail-*.whl
 nsjail-status
 ```
 

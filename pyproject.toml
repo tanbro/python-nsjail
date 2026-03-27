@@ -55,8 +55,8 @@ Changelog = "https://github.com/tanbro/python-nsjail/releases"
 nsjail = "nsjail.__main__:main"
 nsjail-status = "nsjail.status:main"
 
-[tool.setuptools]
-zip-safe = false
+[tool.setuptools.package-data]
+nsjail = ["bin/nsjail"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -67,6 +67,8 @@ version_file = "src/nsjail/version.py"
 [dependency-groups]
 dev = [
   "setuptools>=80.0",
+  "wheel",
+  "auditwheel",
   "pytest",
   "pytest-asyncio",
   "pytest-cov",

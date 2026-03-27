@@ -10,17 +10,14 @@ set -euxo pipefail
 # Install nsjail build dependencies (per nsjail/README.md)
 yum install -y autoconf bison flex libtool libnl3-devel patch pkgconfig protobuf-compiler protobuf-devel
 
-# Install Python build tool
-pip install --disable-pip-version-check build
-
 # Note: manylinux_2_34 uses x86-64-v2 by default (GCC 14 on AlmaLinux 9)
 # This is acceptable since nsjail requires kernel 5.10+, which implies modern hardware
 export ARCH=$(uname -m)
 
 # Build wheel - py3-none tag works for all Python 3.x versions
 cd /ws
-echo "Building wheel with python3..."
-python3 -m build --wheel
+echo "Building wheel with python3.12..."
+python3.12 -m build --wheel
 
 # Run auditwheel repair on the wheel
 # For x86_64, use --disable-isa-ext-check to skip x86-64-v2 check

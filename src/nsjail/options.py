@@ -4,14 +4,37 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from collections.abc import Mapping, Sequence
+from enum import Enum
 
 
-__all__ = ["NsjailOptions", "NsenterOptions"]
+__all__ = ["NsjailMode", "NsjailOptions", "NsenterOptions"]
+
+
+class NsjailMode(str, Enum):
+    """nsjail execution modes.
+
+    See nsjail --help for details.
+    """
+
+    ONCE = "o"
+    """MODE_STANDALONE_ONCE: Launch with clone/execve, parent monitors child (default)."""
+
+    EXECVE = "e"
+    """MODE_STANDALONE_EXECVE: Direct execve, no parent process (limits not enforced)."""
+
+    RERUN = "r"
+    """MODE_STANDALONE_RERUN: Like ONCE but restart forever."""
+
+    LISTEN = "l"
+    """MODE_LISTEN_TCP: TCP listen mode, requires --port."""
 
 
 @dataclass
 class NsjailOptions:
     """nsjail command line options (arguments before '--')."""
+
+    # Execution mode
+    mode: NsjailMode | str | None = None  # --mode|-M
 
     # Filesystem
     chroot: str | None = None  # --chroot DIR
@@ -58,6 +81,11 @@ class NsjailOptions:
         - Uses long format for all options (e.g. --chroot, not -c)
         """
         args: list[str] = []
+
+        # Execution mode
+        if self.mode is not None:
+            value = self.mode.value if isinstance(self.mode, NsjailMode) else self.mode
+            args.extend(["--mode", value])
 
         # Filesystem
         if self.chroot is not None:

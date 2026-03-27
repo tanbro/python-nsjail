@@ -6,6 +6,7 @@ import subprocess
 import pytest
 
 from nsjail import (
+    NsjailMode,
     NsjailOptions,
     NsenterOptions,
     async_create_nsjail,
@@ -223,6 +224,29 @@ def test_options_hostname_none():
     options = NsjailOptions(hostname=None)
     args = options.build_args()
     assert "--hostname" not in args
+
+
+def test_options_mode():
+    """Test mode option."""
+    options = NsjailOptions(mode=NsjailMode.EXECVE)
+    args = options.build_args()
+    assert "--mode" in args
+    assert "e" in args
+
+
+def test_options_mode_str():
+    """Test mode option with string value."""
+    options = NsjailOptions(mode="e")
+    args = options.build_args()
+    assert "--mode" in args
+    assert "e" in args
+
+
+def test_options_mode_none():
+    """Test that None mode doesn't generate arguments."""
+    options = NsjailOptions(mode=None)
+    args = options.build_args()
+    assert "--mode" not in args
 
 
 def test_options_bindmount():

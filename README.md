@@ -48,61 +48,27 @@ nsjail --help
 
 You got `nsjail` installed!
 
-### Where is the nsjail binary?
-
-The installation location depends on how you install:
-
-**Virtual environment** (recommended):
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install python-nsjail
-# Binary: .venv/bin/nsjail
-```
-
-**User install**:
-```bash
-pip install --user python-nsjail
-# Binary: ~/.local/bin/nsjail
-```
-
-**System install** (requires root):
-```bash
-pip install python-nsjail
-# Binary: /usr/local/bin/nsjail
-```
-
 ### Verify Installation
 
 ```bash
 nsjail --help
-```
-
-and the status(in python environment's scripts directory):
-
-```bash
 nsjail-status
 ```
 
-Output:
-```
-nsjail status:
-  System PATH:   /usr/bin/nsjail
-  Bundled:       /path/to/bundled/nsjail
-  Script:        /path/to/wrapper/nsjail
+### Where is the nsjail binary?
 
-Package version: 0.1.0
-Bundled nsjail:  3.6
-```
+The `nsjail` command is installed as a console script in your environment's `bin/` directory (e.g., `.venv/bin`, `~/.local/bin`, or `/usr/local/bin`). The underlying binary is bundled with the Python package.
+
+For development, after building the wheel with `python setup.py bdist_wheel`, the binary will be at `src/nsjail/bin/nsjail`.
 
 ### Getting the Binary Path from Python
 
 If you need the nsjail binary path in your scripts:
 
 ```python
-from nsjail import bundled_binary
+from nsjail import bundled_nsjail
 
-nsjail_path = bundled_binary()
+nsjail_path = bundled_nsjail()
 print(nsjail_path)  # /absolute/path/to/nsjail
 ```
 
@@ -312,7 +278,7 @@ export NSJAIL=$XDG_DATA_HOME/nsjail/bin/nsjail
 ### Locator Functions
 
 - `locate_nsjail()` - Find nsjail binary (respects NSJAIL env var)
-- `bundled_binary()` - Get bundled nsjail binary path
+- `bundled_nsjail()` - Get bundled nsjail binary path
 
 ## Building from Source
 

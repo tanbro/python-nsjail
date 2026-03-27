@@ -35,7 +35,9 @@ def bundled_nsjail() -> Path:
     binary_path = resources.files(__package__) / "bin" / "nsjail"
     if binary_path.is_file():
         return Path(str(binary_path)).resolve()
-    raise FileNotFoundError("bundled nsjail binary not found")
+    raise FileNotFoundError(
+        "bundled nsjail binary not found. Run 'uv build --wheel' first if developing."
+    )
 
 
 def scripts_nsjail() -> Path | None:

@@ -16,6 +16,7 @@ class NsjailOptions:
     # Filesystem
     chroot: str | None = None  # --chroot DIR
     cwd: str | None = None  # --cwd DIR
+    hostname: str | None = None  # --hostname HOSTNAME
 
     # Bind mounts (--bindmount_ro, --bindmount)
     # Supports 'source' or 'source:dest' syntax
@@ -63,6 +64,8 @@ class NsjailOptions:
             args.extend(["--chroot", self.chroot])
         if self.cwd is not None:
             args.extend(["--cwd", self.cwd])
+        if self.hostname is not None:
+            args.extend(["--hostname", self.hostname])
 
         # Bind mounts
         if self.bindmount_ro:

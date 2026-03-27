@@ -210,6 +210,21 @@ def test_options_empty_containers():
     assert args == []
 
 
+def test_options_hostname():
+    """Test hostname option."""
+    options = NsjailOptions(hostname="test-jail")
+    args = options.build_args()
+    assert "--hostname" in args
+    assert "test-jail" in args
+
+
+def test_options_hostname_none():
+    """Test that None hostname doesn't generate arguments."""
+    options = NsjailOptions(hostname=None)
+    args = options.build_args()
+    assert "--hostname" not in args
+
+
 def test_options_bindmount():
     """Test bindmount/bindmount_ro parameters."""
     options = NsjailOptions(

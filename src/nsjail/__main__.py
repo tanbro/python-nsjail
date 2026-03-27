@@ -10,13 +10,13 @@ def main():
     This function uses os.execl() to replace the current Python process
     with the nsjail binary, preserving the PID.
     """
-    # Find the nsjail binary relative to this module
-    nsjail_bin = bundled_nsjail()
-
-    # Replace current process with nsjail (preserves PID)
-    # os.execl() replaces the current process image with a new one
-    # The PID remains the same, which is important for nsjail's use case
-    os.execl(nsjail_bin, nsjail_bin, *sys.argv[1:])
+    try:
+        nsjail_bin = bundled_nsjail()
+        os.execl(nsjail_bin, nsjail_bin, *sys.argv[1:])
+    except FileNotFoundError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        print("Run 'uv build --wheel' first if developing.", file=sys.stderr)
+        sys.exit(1)
 
 
 if __name__ == "__main__":

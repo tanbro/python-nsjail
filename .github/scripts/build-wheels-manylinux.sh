@@ -2,7 +2,7 @@
 # Build script for manylinux containers (glibc-based, RHEL/AlmaLinux)
 # This script runs inside manylinux Docker images to:
 # 1. Install nsjail build dependencies
-# 2. Build wheels for multiple Python versions
+# 2. Build wheel (py3-none, works for all Python 3.x)
 # 3. Run auditwheel repair to vendor .so files and fix manylinux tags
 
 set -euxo pipefail
@@ -14,17 +14,12 @@ yum install -y autoconf bison flex libtool libnl3-devel patch pkgconfig protobuf
 # This is acceptable since nsjail requires kernel 5.10+, which implies modern hardware
 export ARCH=$(uname -m)
 
-# Python versions to build (available in PATH as python3.X)
-PYTHON_VERSIONS="3.9 3.10 3.11 3.12 3.13 3.14"
-
-# Build wheels - setuptools will compile nsjail via BuildExtCommand
+# Build wheel - py3-none tag works for all Python 3.x versions
 cd /ws
-for py_ver in $PYTHON_VERSIONS; do
-    echo "Building wheel with python$py_ver..."
-    python$py_ver -m build --wheel
-done
+echo "Building wheel with python3..."
+python3 -m build --wheel
 
-# Run auditwheel repair on all wheels
+# Run auditwheel repair on the wheel
 # For x86_64, use --disable-isa-ext-check to skip x86-64-v2 check
 # (manylinux_2_34 uses x86-64-v2 by default, but spec requires baseline x86-64)
 # This is a known PyPA issue #1725

@@ -228,7 +228,7 @@ def test_options_hostname_none():
 
 def test_options_mode():
     """Test mode option."""
-    options = NsjailOptions(mode=NsjailMode.EXECVE)
+    options = NsjailOptions(mode=NsjailMode.STANDALONE_EXECVE)
     args = options.build_args()
     assert "--mode" in args
     assert "e" in args

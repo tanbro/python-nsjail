@@ -18,16 +18,16 @@ class NsjailMode(str, Enum):
     See nsjail --help for details.
     """
 
-    ONCE = "o"
+    STANDALONE_ONCE = "o"
     """MODE_STANDALONE_ONCE: Launch with clone/execve, parent monitors child (default)."""
 
-    EXECVE = "e"
+    STANDALONE_EXECVE = "e"
     """MODE_STANDALONE_EXECVE: Direct execve, no parent process (limits not enforced)."""
 
-    RERUN = "r"
+    STANDALONE_RERUN = "r"
     """MODE_STANDALONE_RERUN: Like ONCE but restart forever."""
 
-    LISTEN = "l"
+    LISTEN_TCP = "l"
     """MODE_LISTEN_TCP: TCP listen mode, requires --port."""
 
 

@@ -30,7 +30,7 @@ source .venv/bin/activate
 pip install build
 
 # Install the package
-pip install -e .
+pip install -e . --group dev
 ```
 
 **IMPORTANT**: Strongly recommend using a virtual environment for development.
@@ -45,11 +45,6 @@ sudo apt-get install autoconf bison flex gcc g++ git libprotobuf-dev libnl-route
 ```
 
 See [nsjail README](https://github.com/google/nsjail) for full build requirements.
-
-Install **Python build tools** if your are using pip:
-```bash
-pip install build
-```
 
 ### Build Steps
 
@@ -69,8 +64,8 @@ uv build --wheel
 # 3. Verify installation
 #   Using uv:  uv pip install dist/*.whl
 #   Using pip: pip install dist/*.whl
-uv pip install dist/python_nsjail-*.whl
-nsjail-status
+uv pip install dist/python_nsjail-*.whl -t /tmp/test-install-python-nsjail
+ldd /tmp/test-install-python-nsjail/nsjail/bin/nsjail
 ```
 
 ## Testing
@@ -78,12 +73,6 @@ nsjail-status
 ```bash
 # Run tests
 pytest
-
-# Or with verbose output
-pytest -v
-
-# Run specific test
-pytest tests/test_api.py::test_sync_basic
 ```
 
 ## Code Quality
@@ -98,6 +87,14 @@ This includes:
 - **ruff** - linting and formatting
 - **mypy** - static type checking
 - **yaml/toml validation** - config file checks
+
+or just:
+
+```bash
+pre-commit install
+```
+
+this will run all hooks on commit.
 
 ### Type Safety
 
@@ -139,12 +136,22 @@ class NsjailBuilder:
 
 ## Updating nsjail Version
 
-1. Update the submodule:
+When a new nsjail stable version is released:
+
+1. Update the submodule to the latest stable tag:
+
    ```bash
-   git submodule update --remote nsjail
+   cd nsjail
+   git fetch --tags
+   git checkout $(git describe --tags --abbrev=0)  # Checkout latest stable release
+   # Or specify a version: git checkout 3.7
+   cd ..
+   git add nsjail
+   git commit -m "update nsjail to v3.7"
    ```
 
 2. Verify the version:
+
    ```bash
    cd nsjail
    git describe --tags --abbrev=0
@@ -153,7 +160,7 @@ class NsjailBuilder:
 3. Update `src/nsjail/version.py`:
    ```python
    __version__ = "1.0.0"           # Bump if needed
-   __nsjail_version__ = "3.6"      # New nsjail version
+   __nsjail_version__ = "3.7"      # New nsjail version
    ```
 
 4. Build and test.
@@ -185,34 +192,27 @@ Repaired wheels are in `wheelhouse/`.
 
 ## Release Process
 
-This project uses git-flow for branching and version management. Tag format follows git-flow conventions with `v` prefix (e.g., `v0.3.0b1`), which is automatically added by git-flow.
+**Version format**: Follows [PEP 440](https://peps.python.org/pep-0440/)
 
-**Version format**: `X.Y.Z{pre}` where `pre` can be:
-- `aN` (alpha): `v0.3.0a1`
-- `bN` (beta): `v0.3.0b1`
-- `rcN` (release candidate): `v0.3.0rc1`
-- (no suffix): stable release: `v0.3.0`
+**Release steps** (using git-flow commands or manual git):
 
-**PyPI compatibility**: PyPI strips the `v` prefix when displaying versions, so `v0.3.0b1` becomes `0.3.0b1` on PyPI.
-
-**Release steps**:
 ```bash
 # 1. Start release branch (version without v prefix)
 git flow release start 0.3.0b1
+# Or manually: git checkout -b release/0.3.0b1 develop
 
 # 2. Update CHANGELOG.md in the release branch
 # Edit version number and date
 
 # 3. Finish release (creates tag v0.3.0b1)
 git flow release finish 0.3.0b1
+# Or manually: git checkout main && git merge release/0.3.0b1 && git tag v0.3.0b1
 
 # 4. Push tags and branches
 git push origin main
 git push origin develop
 git push origin v0.3.0b1
 ```
-
-**Important**: When using `git flow release start`, use the version **without** the `v` prefix (e.g., `0.3.0b1`, not `v0.3.0b1`). Git-flow will automatically add the `v` prefix when creating the tag.
 
 ### Commit Message Format
 
@@ -225,8 +225,6 @@ Detailed explanation of what changed and why.
 
 - Changed file or component
 - Added feature or fix
-
-Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
 ```
 
 Common prefixes:

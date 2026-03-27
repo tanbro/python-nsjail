@@ -36,7 +36,7 @@ def bundled_nsjail() -> Path:
     if binary_path.is_file():
         return Path(str(binary_path)).resolve()
     raise FileNotFoundError(
-        "bundled nsjail binary not found. Run 'uv build --wheel' first if developing."
+        f"Can not find bundled nsjail binary excutable {binary_path!r}"
     )
 
 

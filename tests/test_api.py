@@ -14,7 +14,7 @@ from nsjail import (
     build_nsenter_args,
     create_nsjail,
     create_nsenter,
-    merge_streams,
+    interleave_streams,
 )
 
 
@@ -62,8 +62,8 @@ async def test_with_options():
 
 
 @pytest.mark.asyncio
-async def test_merge_streams():
-    """Test merge_streams utility."""
+async def test_interleave_streams():
+    """Test interleave_streams utility."""
     proc = await async_create_nsjail(
         command=["/bin/sh", "-c", "echo out; echo err >&2"],
         options=NsjailOptions(chroot="/"),
@@ -72,7 +72,7 @@ async def test_merge_streams():
     )
 
     sources = []
-    async for source, chunk in merge_streams(proc):
+    async for source, chunk in interleave_streams(proc):
         sources.append(source)
 
     await proc.wait()
@@ -80,8 +80,8 @@ async def test_merge_streams():
 
 
 @pytest.mark.asyncio
-async def test_merge_streams_stdout_only():
-    """Test merge_streams with stdout only."""
+async def test_interleave_streams_stdout_only():
+    """Test interleave_streams with stdout only."""
     proc = await async_create_nsjail(
         command=["/bin/echo", "hello"],
         options=NsjailOptions(chroot="/"),
@@ -90,7 +90,7 @@ async def test_merge_streams_stdout_only():
     )
 
     chunks = []
-    async for source, chunk in merge_streams(proc, stderr=False):
+    async for source, chunk in interleave_streams(proc, stderr=False):
         assert source == "stdout"
         chunks.append(chunk)
 
@@ -99,8 +99,8 @@ async def test_merge_streams_stdout_only():
 
 
 @pytest.mark.asyncio
-async def test_merge_streams_stderr_only():
-    """Test merge_streams with stderr only."""
+async def test_interleave_streams_stderr_only():
+    """Test interleave_streams with stderr only."""
     proc = await async_create_nsjail(
         command=["/bin/sh", "-c", "echo error >&2"],
         options=NsjailOptions(chroot="/"),
@@ -109,7 +109,7 @@ async def test_merge_streams_stderr_only():
     )
 
     chunks = []
-    async for source, chunk in merge_streams(proc, stdout=False):
+    async for source, chunk in interleave_streams(proc, stdout=False):
         assert source == "stderr"
         chunks.append(chunk)
 
@@ -147,7 +147,7 @@ def test_build_nsjail_args_empty():
 def test_build_nsenter_args_basic():
     """Test build_nsenter_args."""
     args = build_nsenter_args(1234, ["net", "mnt"])
-    assert "-t" in args
+    assert "--target" in args
     assert "1234" in args
     assert "-n" in args
     assert "-m" in args
@@ -161,7 +161,7 @@ def test_build_nsenter_args_with_options():
         ["net"],
         options=NsenterOptions(wd="/tmp"),
     )
-    assert "-t" in args
+    assert "--target" in args
     assert "-n" in args
     assert "--wd" in args
     assert "/tmp" in args

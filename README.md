@@ -134,32 +134,6 @@ output, _ = proc.communicate()
 print(output.decode())
 ```
 
-### Stream Merging
-
-For processes that output to both stdout and stderr, use `merge_streams`:
-
-```python
-import asyncio
-import subprocess
-from nsjail import async_create_nsjail, merge_streams, NsjailOptions
-
-async def main():
-    proc = await async_create_nsjail(
-        command=["/bin/sh", "-c", "echo out; echo err >&2"],
-        options=NsjailOptions(chroot="/"),
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
-
-    async for source, chunk in merge_streams(proc):
-        if source == "stdout":
-            print(f"stdout: {chunk.decode()}")
-        else:
-            print(f"stderr: {chunk.decode()}", file=sys.stderr)
-
-asyncio.run(main())
-```
-
 ### Using nsenter
 
 Enter an existing container's namespace with `async_create_nsenter`:

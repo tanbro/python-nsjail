@@ -10,13 +10,25 @@
   - Removed fake C extension stub (`_stub.c`)
   - Wheels work across Python versions without rebuilding
 
+- **Dual sync/async API** - Complete API redesign for consistency
+  - Sync: `create_nsjail()`, `create_nsenter()` returning `subprocess.Popen`
+  - Async: `async_create_nsjail()`, `async_create_nsenter()` returning `asyncio.subprocess.Process`
+  - Helper: `interleave_streams()` for interleaving stdout/stderr in async
+  - All `*args` and `**kwargs` passed through to stdlib subprocess functions
+
+### 🗑️ Removed
+
+- **High-level wrapper classes** - Removed `NsjailProcess` and `NsenterContext`
+  - Use stdlib `subprocess.Popen` / `asyncio.subprocess.Process` directly
+  - Simpler, more transparent, better IDE support
+
 ### 🔧 Internal
 
 - **wheel structure** - Reorganized to comply with wheel spec (Root-Is-Purelib: false)
   - All files now at wheel root instead of `.data` subdirectories
   - Correct rpath for auditwheel-repaired wheels (`$ORIGIN/../../python_nsjail.libs`)
 - **CI build** - Simplified to use `uv build --wheel` with single Python version
-- **Function renamed** - `merge_streams()` → `interleave_streams()` for clarity
+- **Module reorganization** - Split `process.py` into `subprocess.py` and `async_subprocess.py`
 
 ## [v0.2.0]
 

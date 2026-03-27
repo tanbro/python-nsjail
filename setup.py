@@ -52,7 +52,7 @@ class BdistWheelCommand(bdist_wheel):
         if not wheel_files:
             return
 
-        wheel_file = wheel_files[-1]
+        wheel_file = wheel_files[0]
         print(f"Fixing wheel structure: {wheel_file.name}")
 
         with tempfile.TemporaryDirectory() as tmpdir:

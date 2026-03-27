@@ -1,6 +1,6 @@
 # python-nsjail
 
-> Prebuilt [nsjail](https://github.com/google/nsjail) executables packaged as Python wheels with a simple Python API
+> Prebuilt [nsjail](https://github.com/google/nsjail) executable file packaged as Python wheels with simple Python APIs
 
 [![CI](https://github.com/tanbro/python-nsjail/actions/workflows/build-and-publish.yml/badge.svg)](https://github.com/tanbro/python-nsjail/actions/workflows/build-and-publish.yml)
 [![GitHub tags](https://img.shields.io/github/v/tag/tanbro/python-nsjail)](https://github.com/tanbro/python-nsjail/tags)

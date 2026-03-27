@@ -5,7 +5,7 @@ requires = ["setuptools>=80.0", "setuptools-scm>=8"]
 [project]
 name = "python-nsjail"
 dynamic = ["version"]
-description = "Pre-built nsjail executable and library for Python developers"
+description = "Prebuilt google nsjail executable file packaged as Python wheels with simple Python APIs"
 readme = "README.md"
 authors = [{ name = "tanbro", email = "tanbro@163.com" }]
 license = "Apache-2.0"

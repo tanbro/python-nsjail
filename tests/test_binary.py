@@ -34,8 +34,8 @@ def test_locate_nsjail():
     assert isinstance(result, Path)
 
 
-def bundled_nsjail():
-    """Test that bundled_binary() returns a Path."""
+def test_bundled_nsjail():
+    """Test that bundled_nsjail() returns a Path."""
     result = nsjail.bundled_nsjail()
     assert isinstance(result, Path)
 

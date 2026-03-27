@@ -13,6 +13,9 @@ apk update
 # Install nsjail build dependencies (per nsjail/README.md)
 apk add autoconf bison flex libtool libnl3-dev pkgconf protoc protobuf-dev
 
+# Fix git ownership detection in Docker containers
+git config --global --add safe.directory /ws
+
 # Build wheel - py3-none tag works for all Python 3.x versions
 cd /ws
 echo "Building wheel with uv..."

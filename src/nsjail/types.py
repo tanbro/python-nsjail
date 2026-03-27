@@ -1,5 +1,5 @@
-from typing import Literal
-from collections.abc import Mapping
+from typing import Literal, Protocol
+from collections.abc import Mapping, Sequence
 
 StreamType = Literal["stdout", "stderr"]
 NamespaceType = Literal["net", "mnt", "ipc", "uts", "pid", "user", "cgroup"]
@@ -14,3 +14,11 @@ NS_FLAGS: Mapping[NamespaceType, str] = {
     "user": "-U",
     "cgroup": "-C",
 }
+
+
+class ProcessOptionsProtocol(Protocol):
+    """
+    Protocol for ProcessOptions
+    """
+
+    def build_args(self) -> Sequence[str]: ...

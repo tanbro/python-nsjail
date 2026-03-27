@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from collections.abc import Mapping, Sequence
 from enum import Enum
 
+from .types import ProcessOptionsProtocol
+
 
 __all__ = ["NsjailMode", "NsjailOptions", "NsenterOptions"]
 
@@ -30,7 +32,7 @@ class NsjailMode(str, Enum):
 
 
 @dataclass
-class NsjailOptions:
+class NsjailOptions(ProcessOptionsProtocol):
     """nsjail command line options (arguments before '--')."""
 
     # Execution mode
@@ -150,7 +152,7 @@ class NsjailOptions:
 
 
 @dataclass
-class NsenterOptions:
+class NsenterOptions(ProcessOptionsProtocol):
     """nsenter command line options.
 
     nsenter is used to enter the namespaces of a target process and execute

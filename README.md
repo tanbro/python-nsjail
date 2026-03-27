@@ -293,7 +293,6 @@ export NSJAIL=$XDG_DATA_HOME/nsjail/bin/nsjail
 
 - `async_create_nsjail(command, options=None, config_file=None, *args, **kwargs)` - Create async nsjail subprocess
 - `async_create_nsenter(target_pid, namespaces, command, options=None, *args, **kwargs)` - Create async nsenter subprocess
-- `merge_streams(proc, chunk_size=8192, stdout=True, stderr=True)` - Merge stdout/stderr streams
 
 ### Sync Functions
 
@@ -318,6 +317,18 @@ export NSJAIL=$XDG_DATA_HOME/nsjail/bin/nsjail
 ## Building from Source
 
 For development or building from source, see [CONTRIBUTING.md](CONTRIBUTING.md).
+
+### For Developers
+
+If you're working on a clone of this repository and want to run/debug nsjail locally, you need to build the wheel first to generate the `nsjail` binary:
+
+```bash
+python setup.py bdist_wheel
+# or: python -m build --wheel
+# or: uv build --wheel
+```
+
+This compiles the nsjail binary and places it at `src/nsjail/bin/nsjail`, which is required for the package to function in place.
 
 ## License
 

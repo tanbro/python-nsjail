@@ -39,7 +39,6 @@ class BdistWheelCommand(bdist_wheel):
         pkg_data_dir.mkdir(parents=True, exist_ok=True)
         dest_binary = pkg_data_dir / "nsjail"
         shutil.copy(src_binary, dest_binary)
-        dest_binary.chmod(0o755)
         print(f"Copied nsjail binary to {dest_binary}")
 
         # Build the wheel

@@ -19,8 +19,8 @@ export ARCH=$(uname -m)
 
 # Build wheel - py3-none tag works for all Python 3.x versions
 cd /ws
-echo "Building wheel with python3.12..."
-python3.12 -m build --wheel
+echo "Building wheel with uv ..."
+uv build --wheel
 
 # Run auditwheel repair on the wheel
 # For x86_64, use --disable-isa-ext-check to skip x86-64-v2 check

@@ -18,8 +18,8 @@ git config --global --add safe.directory /ws
 
 # Build wheel - py3-none tag works for all Python 3.x versions
 cd /ws
-echo "Building wheel with uv..."
-python3.12 -m build --wheel
+echo "Building wheel with uv ..."
+uv build --wheel
 
 # Run auditwheel repair on the wheel
 auditwheel repair dist/*.whl

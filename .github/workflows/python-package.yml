@@ -22,21 +22,17 @@ jobs:
         with:
           submodules: recursive
 
-      - uses: actions/setup-python@v5
-
-      - name: Check formatting
-        uses: astral-sh/ruff-action@v3
-        with:
-          args: format --check
+      - uses: astral-sh/setup-uv@v7
+      - uses: astral-sh/ruff-action@v3
 
       - name: Run linting
-        uses: astral-sh/ruff-action@v3
-        with:
-          args: check
+        run: |
+          ruff format --check
+          ruff check
 
       - name: Install development dependencies
         run: |
-          python -m pip install --disable-pip-version-check -e . --group dev
+          uv sync
 
       - name: Run type check
         run: mypy
@@ -90,10 +86,11 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
+      - uses: astral-sh/setup-uv@v7
+
       - name: Build sdist
         run: |
-          python3 -m pip install --disable-pip-version-check build
-          python3 -m build --sdist
+          uv build --sdist
 
       - name: Upload sdist
         uses: actions/upload-artifact@v4

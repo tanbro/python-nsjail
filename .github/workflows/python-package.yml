@@ -40,10 +40,6 @@ jobs:
         run: |
           python -m pip install --disable-pip-version-check -e . --group dev
 
-      - name: Build nsjail binary
-        run: |
-          python setup.py bdist_wheel
-
       - name: Check formatting
         run: ruff format --check
 
@@ -52,6 +48,10 @@ jobs:
 
       - name: Run type check
         run: mypy
+
+      - name: Build nsjail binary
+        run: |
+          python setup.py bdist_wheel
 
       - name: Run tests with coverage
         run: pytest --cov --cov-branch --cov-report=xml

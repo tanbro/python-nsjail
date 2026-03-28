@@ -14,6 +14,8 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
+    container:
+      image: python
     if: |
       contains(github.event.head_commit.message, '[ci skip]') == false &&
       contains(github.event.head_commit.message, '[skip ci]') == false
@@ -22,33 +24,30 @@ jobs:
         with:
           submodules: recursive
 
-      - uses: astral-sh/setup-uv@v7
-      - uses: astral-sh/ruff-action@v3
+      - name: Install development dependencies
+        run: |
+          pip install --disable-pip-version-check -e . --group dev ruff build
 
       - name: Run linting
         run: |
           ruff format --check
           ruff check
 
-      - name: Install development dependencies
-        run: |
-          uv sync
-
       - name: Run type check
-        run: uv run mypy
+        run: mypy
 
       - name: Install nsjail build dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y autoconf bison flex gcc g++ git \
+          apt-get update
+          apt-get install -y autoconf bison flex gcc g++ git \
             libprotobuf-dev libnl-route-3-dev libtool make \
             pkg-config protobuf-compiler
 
       - name: Build nsjail binary
-        run: uv run python setup.py bdist_wheel
+        run: python setup.py bdist_wheel
 
       - name: Run tests with coverage
-        run: uv run pytest --cov --cov-branch --cov-report=xml
+        run: pytest --cov --cov-branch --cov-report=xml
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v5

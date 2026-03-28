@@ -1,7 +1,6 @@
 """Tests for nsjail Python API."""
 
 import asyncio
-import os
 import subprocess
 
 import pytest
@@ -19,11 +18,8 @@ from nsjail import (
     interleave_streams,
 )
 
-# Skip nsenter tests in CI (GitHub Actions lacks CAP_SYS_ADMIN)
-skip_in_ci = pytest.mark.skipif(
-    os.getenv("GITHUB_ACTIONS") == "true",
-    reason="nsenter requires CAP_SYS_ADMIN which is not available in GitHub Actions",
-)
+# Root fixture path - use system root for tests
+ROOTFS = "/"
 
 
 # ===== Basic Tests =====
@@ -34,7 +30,7 @@ async def test_async_basic():
     """Test basic async create and wait."""
     proc = await async_create_nsjail(
         command=["/bin/echo", "hello"],
-        options=NsjailOptions(chroot="/"),
+        options=NsjailOptions(mode=NsjailMode.STANDALONE_ONCE, chroot=ROOTFS),
     )
     assert proc.pid > 0
     await proc.wait()
@@ -45,7 +41,7 @@ def test_sync_basic():
     """Test basic sync create and wait."""
     proc = create_nsjail(
         command=["/bin/echo", "hello"],
-        options=NsjailOptions(chroot="/"),
+        options=NsjailOptions(mode=NsjailMode.STANDALONE_ONCE, chroot=ROOTFS),
     )
     assert proc.pid > 0
     proc.wait()
@@ -59,8 +55,10 @@ def test_sync_basic():
 async def test_with_options():
     """Test with NsjailOptions."""
     proc = await async_create_nsjail(
-        command=["/bin/true"],
-        options=NsjailOptions(chroot="/"),
+        command=["/bin/sh", "-c", "exit 0"],
+        options=NsjailOptions(
+            mode=NsjailMode.STANDALONE_ONCE, chroot=ROOTFS, env={"TEST_VAR": "value"}
+        ),
     )
     ret = await proc.wait()
     assert ret == 0
@@ -74,7 +72,7 @@ async def test_interleave_streams():
     """Test interleave_streams utility."""
     proc = await async_create_nsjail(
         command=["/bin/sh", "-c", "echo out; echo err >&2"],
-        options=NsjailOptions(chroot="/"),
+        options=NsjailOptions(mode=NsjailMode.STANDALONE_ONCE, chroot=ROOTFS),
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
@@ -92,7 +90,7 @@ async def test_interleave_streams_stdout_only():
     """Test interleave_streams with stdout only."""
     proc = await async_create_nsjail(
         command=["/bin/echo", "hello"],
-        options=NsjailOptions(chroot="/"),
+        options=NsjailOptions(mode=NsjailMode.STANDALONE_ONCE, chroot=ROOTFS),
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
@@ -111,7 +109,7 @@ async def test_interleave_streams_stderr_only():
     """Test interleave_streams with stderr only."""
     proc = await async_create_nsjail(
         command=["/bin/sh", "-c", "echo error >&2"],
-        options=NsjailOptions(chroot="/"),
+        options=NsjailOptions(mode=NsjailMode.STANDALONE_ONCE, chroot=ROOTFS),
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
@@ -202,6 +200,7 @@ def test_options_build_args():
     assert "--env" in args
     assert "HOME=/tmp" in args
     assert "--bindmount_ro" in args
+    assert "--tmpfsmount" in args
 
 
 def test_options_none_values():
@@ -235,10 +234,10 @@ def test_options_hostname_none():
 
 def test_options_mode():
     """Test mode option."""
-    options = NsjailOptions(mode=NsjailMode.STANDALONE_EXECVE)
+    options = NsjailOptions(mode=NsjailMode.STANDALONE_ONCE)
     args = options.build_args()
     assert "--mode" in args
-    assert "e" in args
+    assert "o" in args
 
 
 def test_options_mode_str():
@@ -302,8 +301,8 @@ def test_options_tmpfsmount():
 async def test_command_not_found():
     """Test command that doesn't exist."""
     proc = await async_create_nsjail(
-        command=["/bin/nonexistent_command_xyz123"],
-        options=NsjailOptions(chroot="/"),
+        command=["nonexistent_command_xyz123"],
+        options=NsjailOptions(mode=NsjailMode.STANDALONE_ONCE, chroot=ROOTFS),
     )
     ret = await proc.wait()
     assert ret != 0
@@ -314,7 +313,7 @@ async def test_command_non_zero_exit():
     """Test command that exits with non-zero code."""
     proc = await async_create_nsjail(
         command=["/bin/sh", "-c", "exit 42"],
-        options=NsjailOptions(chroot="/"),
+        options=NsjailOptions(mode=NsjailMode.STANDALONE_ONCE, chroot=ROOTFS),
     )
     ret = await proc.wait()
     assert ret == 42
@@ -328,7 +327,7 @@ async def test_time_limit():
     """Test that time_limit actually kills the process."""
     proc = await async_create_nsjail(
         command=["/bin/sh", "-c", "sleep 1000"],
-        options=NsjailOptions(chroot="/", time_limit=1),
+        options=NsjailOptions(mode=NsjailMode.STANDALONE_ONCE, time_limit=1),
     )
     ret = await proc.wait()
     assert ret != 0
@@ -344,7 +343,7 @@ async def test_concurrent_processes():
     async def run_echo(num: int) -> int:
         proc = await async_create_nsjail(
             command=["/bin/echo", f"process_{num}"],
-            options=NsjailOptions(chroot="/"),
+            options=NsjailOptions(mode=NsjailMode.STANDALONE_ONCE, chroot=ROOTFS),
         )
         await proc.wait()
         assert proc.returncode is not None
@@ -362,7 +361,7 @@ async def test_pass_through_cwd():
     """Test that cwd kwarg is passed through."""
     proc = await async_create_nsjail(
         command=["/bin/sh", "-c", "pwd"],
-        options=NsjailOptions(chroot="/"),
+        options=NsjailOptions(mode=NsjailMode.STANDALONE_ONCE, chroot=ROOTFS),
         stdout=subprocess.PIPE,
         cwd="/",
     )
@@ -376,7 +375,7 @@ def test_sync_pass_through_cwd():
     """Test that sync function passes cwd through."""
     proc = create_nsjail(
         command=["/bin/sh", "-c", "pwd"],
-        options=NsjailOptions(chroot="/"),
+        options=NsjailOptions(mode=NsjailMode.STANDALONE_ONCE, chroot=ROOTFS),
         stdout=subprocess.PIPE,
         cwd="/",
     )
@@ -400,7 +399,6 @@ def test_locate_nsjail():
 # ===== nsenter Tests =====
 
 
-@skip_in_ci
 @pytest.mark.asyncio
 async def test_nsenter_basic():
     """Test basic nsenter process creation."""
@@ -423,7 +421,6 @@ async def test_nsenter_basic():
         await sleep_proc.wait()
 
 
-@skip_in_ci
 def test_nsenter_sync():
     """Test sync nsenter process creation."""
     import subprocess as sp
@@ -435,7 +432,7 @@ def test_nsenter_sync():
         proc = create_nsenter(
             target_pid=sleep_proc.pid,
             namespaces=["net"],
-            command=["/bin/pwd"],
+            command=["pwd"],
             stdout=sp.PIPE,
         )
 

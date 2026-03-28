@@ -473,3 +473,7 @@ src/nsjail/bin/
 
 # Generated version file (setuptools_scm)
 src/nsjail/version.py
+
+# Test fixtures - extracted in CI
+tests/fixtures/rootfs/
+!tests/fixtures/rootfs.tar.gz

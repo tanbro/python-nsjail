@@ -12,6 +12,7 @@ exclude *.lock
 prune .*
 prune docs
 prune htmlcov
+prune layers
 prune tests
 prune wheelhouse
 

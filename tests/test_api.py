@@ -1,6 +1,7 @@
 """Tests for nsjail Python API."""
 
 import asyncio
+import os
 import subprocess
 
 import pytest
@@ -16,6 +17,12 @@ from nsjail import (
     create_nsjail,
     create_nsenter,
     interleave_streams,
+)
+
+# Skip nsenter tests in CI (GitHub Actions lacks CAP_SYS_ADMIN)
+skip_in_ci = pytest.mark.skipif(
+    os.getenv("GITHUB_ACTIONS") == "true",
+    reason="nsenter requires CAP_SYS_ADMIN which is not available in GitHub Actions",
 )
 
 
@@ -393,6 +400,7 @@ def test_locate_nsjail():
 # ===== nsenter Tests =====
 
 
+@skip_in_ci
 @pytest.mark.asyncio
 async def test_nsenter_basic():
     """Test basic nsenter process creation."""
@@ -415,6 +423,7 @@ async def test_nsenter_basic():
         await sleep_proc.wait()
 
 
+@skip_in_ci
 def test_nsenter_sync():
     """Test sync nsenter process creation."""
     import subprocess as sp

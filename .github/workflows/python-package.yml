@@ -35,7 +35,7 @@ jobs:
           uv sync
 
       - name: Run type check
-        run: mypy
+        run: uv run mypy
 
       - name: Install nsjail build dependencies
         run: |
@@ -45,11 +45,10 @@ jobs:
             pkg-config protobuf-compiler
 
       - name: Build nsjail binary
-        run: |
-          python setup.py bdist_wheel
+        run: uv run python setup.py bdist_wheel
 
       - name: Run tests with coverage
-        run: pytest --cov --cov-branch --cov-report=xml
+        run: uv run pytest --cov --cov-branch --cov-report=xml
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v5

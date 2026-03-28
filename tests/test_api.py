@@ -1,6 +1,7 @@
 """Tests for nsjail Python API."""
 
 import asyncio
+import os
 import subprocess
 
 import pytest
@@ -21,11 +22,19 @@ from nsjail import (
 # Root fixture path - use system root for tests
 ROOTFS = "/"
 
+# Skip tests requiring CAP_SYS_ADMIN in GitHub Actions
+# GitHub-hosted runners don't support privileged containers
+skip_in_github_actions = pytest.mark.skipif(
+    os.getenv("GITHUB_ACTIONS") == "true",
+    reason="CAP_SYS_ADMIN not available in GitHub Actions (privileged containers not supported)",
+)
+
 
 # ===== Basic Tests =====
 
 
 @pytest.mark.asyncio
+@skip_in_github_actions
 async def test_async_basic():
     """Test basic async create and wait."""
     proc = await async_create_nsjail(
@@ -37,6 +46,7 @@ async def test_async_basic():
     assert proc.returncode == 0
 
 
+@skip_in_github_actions
 def test_sync_basic():
     """Test basic sync create and wait."""
     proc = create_nsjail(
@@ -52,6 +62,7 @@ def test_sync_basic():
 
 
 @pytest.mark.asyncio
+@skip_in_github_actions
 async def test_with_options():
     """Test with NsjailOptions."""
     proc = await async_create_nsjail(
@@ -68,6 +79,7 @@ async def test_with_options():
 
 
 @pytest.mark.asyncio
+@skip_in_github_actions
 async def test_interleave_streams():
     """Test interleave_streams utility."""
     proc = await async_create_nsjail(
@@ -86,6 +98,7 @@ async def test_interleave_streams():
 
 
 @pytest.mark.asyncio
+@skip_in_github_actions
 async def test_interleave_streams_stdout_only():
     """Test interleave_streams with stdout only."""
     proc = await async_create_nsjail(
@@ -105,6 +118,7 @@ async def test_interleave_streams_stdout_only():
 
 
 @pytest.mark.asyncio
+@skip_in_github_actions
 async def test_interleave_streams_stderr_only():
     """Test interleave_streams with stderr only."""
     proc = await async_create_nsjail(
@@ -298,6 +312,7 @@ def test_options_tmpfsmount():
 
 
 @pytest.mark.asyncio
+@skip_in_github_actions
 async def test_command_not_found():
     """Test command that doesn't exist."""
     proc = await async_create_nsjail(
@@ -309,6 +324,7 @@ async def test_command_not_found():
 
 
 @pytest.mark.asyncio
+@skip_in_github_actions
 async def test_command_non_zero_exit():
     """Test command that exits with non-zero code."""
     proc = await async_create_nsjail(
@@ -323,6 +339,7 @@ async def test_command_non_zero_exit():
 
 
 @pytest.mark.asyncio
+@skip_in_github_actions
 async def test_time_limit():
     """Test that time_limit actually kills the process."""
     proc = await async_create_nsjail(
@@ -337,6 +354,7 @@ async def test_time_limit():
 
 
 @pytest.mark.asyncio
+@skip_in_github_actions
 async def test_concurrent_processes():
     """Test running multiple nsjail processes concurrently."""
 
@@ -357,6 +375,7 @@ async def test_concurrent_processes():
 
 
 @pytest.mark.asyncio
+@skip_in_github_actions
 async def test_pass_through_cwd():
     """Test that cwd kwarg is passed through."""
     proc = await async_create_nsjail(
@@ -371,6 +390,7 @@ async def test_pass_through_cwd():
     assert b"/" in output or output  # Just check it ran
 
 
+@skip_in_github_actions
 def test_sync_pass_through_cwd():
     """Test that sync function passes cwd through."""
     proc = create_nsjail(
@@ -400,6 +420,7 @@ def test_locate_nsjail():
 
 
 @pytest.mark.asyncio
+@skip_in_github_actions
 async def test_nsenter_basic():
     """Test basic nsenter process creation."""
     # Create a target process
@@ -421,6 +442,7 @@ async def test_nsenter_basic():
         await sleep_proc.wait()
 
 
+@skip_in_github_actions
 def test_nsenter_sync():
     """Test sync nsenter process creation."""
     import subprocess as sp

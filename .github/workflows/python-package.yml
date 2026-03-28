@@ -33,8 +33,6 @@ jobs:
   test:
     runs-on: ubuntu-latest
     needs: check
-    container:
-      image: python
     if: |
       contains(github.event.head_commit.message, '[ci skip]') == false &&
       contains(github.event.head_commit.message, '[skip ci]') == false
@@ -43,25 +41,13 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Fix git ownership in container
-        run: git config --global --add safe.directory /__w/python-nsjail/python-nsjail
-
-      - name: Install nsjail build dependencies
-        run: |
-          apt-get update
-          apt-get install -y autoconf bison flex gcc g++ git \
-            libprotobuf-dev libnl-route-3-dev libtool make \
-            pkg-config protobuf-compiler
+      - uses: astral-sh/setup-uv@v7
 
       - name: Install development dependencies
-        run: |
-          pip install --disable-pip-version-check -e . --group dev build
-
-      - name: Build nsjail binary
-        run: python setup.py bdist_wheel
+        run: uv sync
 
       - name: Run tests with coverage
-        run: pytest --cov --cov-branch --cov-report=xml
+        run: uv run pytest --cov --cov-branch --cov-report=xml
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v5

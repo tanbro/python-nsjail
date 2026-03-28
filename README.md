@@ -3,8 +3,10 @@
 > Prebuilt [nsjail](https://github.com/google/nsjail) executable file packaged as Python wheels with simple Python APIs
 
 [![CI](https://github.com/tanbro/python-nsjail/actions/workflows/build-and-publish.yml/badge.svg)](https://github.com/tanbro/python-nsjail/actions/workflows/build-and-publish.yml)
-[![GitHub tags](https://img.shields.io/github/v/tag/tanbro/python-nsjail)](https://github.com/tanbro/python-nsjail/tags)
-[![PyPI version](https://badge.fury.io/py/python-nsjail.svg)](https://pypi.org/project/python-nsjail/)
+[![Tests](https://github.com/tanbro/python-nsjail/actions/workflows/test.yml/badge.svg)](https://github.com/tanbro/python-nsjail/actions/workflows/test.yml)
+[![codecov](https://codecov.io/gh/tanbro/python-nsjail/branch/main/graph/badge.svg)](https://codecov.io/gh/tanbro/python-nsjail)
+[![GitHub tag](https://img.shields.io/github/v/tag/tanbro/python-nsjail)](https://github.com/tanbro/python-nsjail/tags)
+[![PyPI version](https://img.shields.io/pypi/v/python-nsjail)](https://pypi.org/project/python-nsjail/)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/python-nsjail)](https://pypi.org/project/python-nsjail/)
 [![PyPI - Implementation](https://img.shields.io/pypi/implementation/python-nsjail)](https://pypi.org/project/python-nsjail/)
 [![PyPI - Status](https://img.shields.io/pypi/status/python-nsjail)](https://pypi.org/project/python-nsjail/)
@@ -61,6 +63,8 @@ You got `nsjail` installed!
 nsjail --help
 nsjail-status
 ```
+
+`nsjail-status` displays installation details including binary location and nsenter availability.
 
 ### Where is the nsjail binary?
 
@@ -232,6 +236,67 @@ Supports `~` and `$VAR` expansion:
 ```bash
 export NSJAIL=~/local/bin/nsjail
 export NSJAIL=$XDG_DATA_HOME/nsjail/bin/nsjail
+```
+
+## Use Cases
+
+### Sandbox Untrusted Code
+
+Execute untrusted Python code with resource limits:
+
+```python
+from nsjail import create_nsjail, NsjailOptions
+import subprocess
+
+proc = create_nsjail(
+    command=["python3", "-c", "print('Hello from sandbox')"],
+    options=NsjailOptions(
+        chroot="/srv/jail",
+        user="nobody",
+        time_limit=5,           # 5 second timeout
+        memory_limit=128,       # 128MB memory limit
+        bindmount_ro=["/usr/lib", "/usr/lib64"],
+    ),
+    stdout=subprocess.PIPE,
+    stderr=subprocess.PIPE,
+)
+stdout, stderr = proc.communicate()
+print(stdout.decode())
+```
+
+### Isolated Network Testing
+
+Test network behavior in an isolated environment:
+
+```python
+from nsjail import async_create_nsjail, NsjailOptions
+
+async def test_network():
+    proc = await async_create_nsjail(
+        command=["curl", "https://example.com"],
+        options=NsjailOptions(
+            isolate_network=True,  # Disable network
+        ),
+    )
+    await proc.wait()
+    # curl will fail due to network isolation
+```
+
+### Containerized Testing
+
+Run tests in a clean environment:
+
+```python
+from nsjail import create_nsjail, NsjailOptions
+
+proc = create_nsjail(
+    command=["pytest", "tests/"],
+    options=NsjailOptions(
+        chroot="/tmp/test-env",
+        bindmount_ro=["/usr", "/lib"],
+        tmpfsmount=["/tmp"],
+    ),
+)
 ```
 
 ## API Reference

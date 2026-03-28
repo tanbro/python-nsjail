@@ -2,8 +2,7 @@
 
 > Prebuilt [nsjail](https://github.com/google/nsjail) executable file packaged as Python wheels with simple Python APIs
 
-[![CI](https://github.com/tanbro/python-nsjail/actions/workflows/build-and-publish.yml/badge.svg)](https://github.com/tanbro/python-nsjail/actions/workflows/build-and-publish.yml)
-[![Tests](https://github.com/tanbro/python-nsjail/actions/workflows/test.yml/badge.svg)](https://github.com/tanbro/python-nsjail/actions/workflows/test.yml)
+[![CI](https://github.com/tanbro/python-nsjail/actions/workflows/python-package.yml/badge.svg)](https://github.com/tanbro/python-nsjail/actions/workflows/python-package.yml)
 [![codecov](https://codecov.io/gh/tanbro/python-nsjail/branch/main/graph/badge.svg)](https://codecov.io/gh/tanbro/python-nsjail)
 [![GitHub tag](https://img.shields.io/github/v/tag/tanbro/python-nsjail)](https://github.com/tanbro/python-nsjail/tags)
 [![PyPI version](https://img.shields.io/pypi/v/python-nsjail)](https://pypi.org/project/python-nsjail/)

@@ -135,7 +135,7 @@ jobs:
       needs.build-sdist.result == 'success' && needs.build-wheels.result == 'success'
     environment:
       name: pypi
-      url: https://pypi.org/p/nsjail
+      url: https://pypi.org/project/python-nsjail/
     steps:
       - uses: actions/download-artifact@v4
         with:

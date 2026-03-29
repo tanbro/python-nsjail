@@ -62,8 +62,8 @@
   - Correct rpath for auditwheel-repaired wheels (`$ORIGIN/../../python_nsjail.libs`)
 - **CI build** - Simplified to use `uv build --wheel` with single Python version
   - Git ownership detection fix for Docker containers
-  - Split check and test into separate jobs for better CI performance
-  - Tests requiring CAP_SYS_ADMIN are skipped in GitHub Actions (privileged containers not supported)
+  - Removed test job from CI (tests require CAP_SYS_ADMIN not available in GitHub Actions)
+  - Lint and type check remain in CI for code quality assurance
 - **Module reorganization** - Split `process.py` into `subprocess.py` and `async_subprocess.py`
 - **Error messages** - Improved binary not found errors with file path information
 - **Options organization** - Reorganized with clear section headers for better navigation
